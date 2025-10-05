@@ -1,0 +1,27 @@
+services:
+  mysql:
+    image: mariadb:10.6
+    # ... (tu config actual)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    # ... (tu config actual)
+
+  backend:
+    image: gestion-gastos:latest   # asegúrate de haber hecho docker build
+    container_name: gestion-gastos
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/gestion_gastos?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USER: root
+      DB_PASS: "Frebian2020#$"
+      PORT: "8081"
+    ports:
+      - "8081:8081"
+    networks:
+      - mysql-net
+
+networks:
+  mysql-net:
+    external: true
