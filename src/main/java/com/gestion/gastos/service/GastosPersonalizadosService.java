@@ -4,6 +4,7 @@ import com.gestion.gastos.model.dto.*;
 import com.gestion.gastos.model.dto.proyección.CardPersonalizadoResumen;
 import com.gestion.gastos.model.dto.proyección.CategoriaPersonalizadoProjection;
 import com.gestion.gastos.model.dto.proyección.MovimientoPersonalizadoView;
+import com.gestion.gastos.model.dto.proyección.ReporteMovimientoPersonalizadoView;
 import com.gestion.gastos.model.entity.*;
 import com.gestion.gastos.repository.CardPersonalizadoRepository;
 import com.gestion.gastos.repository.CategoriaPersonalizadoRepository;
@@ -11,9 +12,11 @@ import com.gestion.gastos.repository.MovimientoPersonalizadoRepository;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -121,27 +124,80 @@ public class GastosPersonalizadosService {
         return  movimientoPersonalizadoRepository.listMovimientoPersonalizado(Long.valueOf(idCard));
     }
 
-    public ApiOutResponseDto nuevoGasto(MovimientoPersonalizado movimientoPersonalizado) {
-        ApiOutResponseDto apiOutResponseDto = new ApiOutResponseDto();
-        CategoriaPersonalizadoEntity catref =
-                categoriaPersonalizadoRepository.getReferenceById(Long.valueOf(movimientoPersonalizado.getIdCard())); // proxy, sin SELECT
-        CardPersonalizadoEntity cardRef =
-                cardPersonalizadoRepository.getReferenceById(Long.valueOf(movimientoPersonalizado.getIdCard())); // proxy, sin SELECT
+    public List<ReporteMovimientoPersonalizadoView> listarReporteCard(Integer idCard) {
+        return  movimientoPersonalizadoRepository.listarReporteCard(Long.valueOf(idCard));
+    }
 
-        MovimientoPersonalizadoEntity entity = MovimientoPersonalizadoEntity.builder()
-                .card(cardRef)
-                .categoria(catref)
-                .tipo(CategoriaPersonalizadoEntity.TipoMovimiento.valueOf(movimientoPersonalizado.getTipo()))                              // << aquí va la referencia
-                .monto(movimientoPersonalizado.getMonto() )
-                .fecha(movimientoPersonalizado.getFecha())
-                .nota(movimientoPersonalizado.getDescripcion())
-                .createdAt(LocalDateTime.now())            // o usa @CreationTimestamp
-                .activo(true)
-                .build();
-        movimientoPersonalizadoRepository.save(entity);
-        apiOutResponseDto.setCodResultado(200);
-        apiOutResponseDto.setMsgResultado("Registrado");
-        return apiOutResponseDto;
+    @Transactional
+    public ApiOutResponseDto nuevoGasto(MovimientoPersonalizado dto) {
+        ApiOutResponseDto out = new ApiOutResponseDto();
+
+        // 1) Carga la card (existe/activa)
+        CardPersonalizadoEntity cardRef = cardPersonalizadoRepository
+                .getReferenceById(dto.getIdCard());
+
+        // 2) Carga la categoría que pertenezca a esa misma card
+        CategoriaPersonalizadoEntity catRef = categoriaPersonalizadoRepository
+                .findByIdAndCardId(dto.getCategoria(), dto.getIdCard())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "La categoría " + dto.getCategoria() + " no pertenece a la card " + dto.getIdCard()
+                ));
+
+        // 3) Mapea el enum
+        var tipoEnum = CategoriaPersonalizadoEntity.TipoMovimiento.valueOf(dto.getTipo().toUpperCase());
+
+        MovimientoPersonalizadoEntity entity;
+
+        // 4) Si es edición
+        if (dto.getIdMovimiento() != null && dto.getIdMovimiento() > 0) {
+            entity = movimientoPersonalizadoRepository.findById(dto.getIdMovimiento())
+                    .orElseThrow(() -> new IllegalArgumentException("Movimiento no encontrado"));
+
+            entity.setCategoria(catRef);
+            entity.setTipo(tipoEnum);
+            entity.setMonto(dto.getMonto() instanceof BigDecimal
+                    ? (BigDecimal) dto.getMonto()
+                    : new BigDecimal(dto.getMonto().toString()));
+            entity.setFecha(dto.getFecha());
+            entity.setNota(dto.getDescripcion());
+            entity.setUpdatedAt(LocalDateTime.now()); // <-- si usas campo updatedAt
+
+            movimientoPersonalizadoRepository.save(entity);
+            out.setMsgResultado("Actualizado correctamente");
+
+        } else {
+            // 5) Nuevo movimiento
+            entity = MovimientoPersonalizadoEntity.builder()
+                    .card(cardRef)
+                    .categoria(catRef)
+                    .tipo(tipoEnum)
+                    .monto(dto.getMonto() instanceof BigDecimal
+                            ? (BigDecimal) dto.getMonto()
+                            : new BigDecimal(dto.getMonto().toString()))
+                    .fecha(dto.getFecha())
+                    .nota(dto.getDescripcion())
+                    .createdAt(LocalDateTime.now())
+                    .activo(true)
+                    .build();
+
+            movimientoPersonalizadoRepository.save(entity);
+            out.setMsgResultado("Registrado correctamente");
+        }
+
+        out.setCodResultado(200);
+        return out;
+    }
+
+
+    public void eliminarMoviento(Long id) {
+        movimientoPersonalizadoRepository.findById(id).ifPresent(mov -> {
+            mov.setActivo(false);
+            movimientoPersonalizadoRepository.save(mov);
+        });
+    }
+
+    public MovimientoPersonalizadoView obtenerMovimientoPersonalizado(Long idMovimiento) {
+        return  movimientoPersonalizadoRepository.obtenerMovimientoPersonalizado(idMovimiento);
 
     }
 }

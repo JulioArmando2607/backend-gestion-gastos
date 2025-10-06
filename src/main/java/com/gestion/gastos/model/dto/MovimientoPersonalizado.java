@@ -15,6 +15,8 @@ public class MovimientoPersonalizado {
 
         private Long idCard;
 
+        private Long idMovimiento;
+
         private Long categoria;
 
         private Long usuario;

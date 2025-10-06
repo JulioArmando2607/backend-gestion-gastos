@@ -4,6 +4,7 @@ import com.gestion.gastos.model.dto.*;
 import com.gestion.gastos.model.dto.proyección.CardPersonalizadoResumen;
 import com.gestion.gastos.model.dto.proyección.CategoriaPersonalizadoProjection;
 import com.gestion.gastos.model.dto.proyección.MovimientoPersonalizadoView;
+import com.gestion.gastos.model.dto.proyección.ReporteMovimientoPersonalizadoView;
 import com.gestion.gastos.model.entity.Categoria;
 import com.gestion.gastos.model.entity.CategoriaPersonalizadoEntity;
 import com.gestion.gastos.service.GastosPersonalizadosService;
@@ -54,11 +55,30 @@ public class GastosPersonalizadosController {
     public  CardPersonalizadoResumen CardPersonalizadosxId(@PathVariable Integer idCard) {
         return gastosPersonalizadosService.CardPersonalizadosxId(idCard);
     }
+
+    @GetMapping("/listar-reporte-card/{idCard}")
+    public List<ReporteMovimientoPersonalizadoView> listarReporteCard(@PathVariable Integer idCard) {
+        return gastosPersonalizadosService.listarReporteCard(idCard);
+    }
+
+
     @PostMapping("/nuevo-gasto")
     public ApiOutResponseDto nuevoGasto(@RequestBody MovimientoPersonalizado movimientoPersonalizado) {
 
         return  gastosPersonalizadosService.nuevoGasto(movimientoPersonalizado) ;
     }
+
+    @DeleteMapping("eliminar-movimiento/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        gastosPersonalizadosService.eliminarMoviento(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/obtener-movimiento-personalizado/{idMovimiento}")
+    public MovimientoPersonalizadoView obtenerMovimientoPersonalizado(@PathVariable Long idMovimiento) {
+        return gastosPersonalizadosService.obtenerMovimientoPersonalizado(idMovimiento);
+    }
+
 
 
 }

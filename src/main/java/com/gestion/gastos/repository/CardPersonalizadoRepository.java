@@ -27,7 +27,7 @@ public interface CardPersonalizadoRepository extends JpaRepository<CardPersonali
                    END), 0) AS saldo
       FROM cards_personalizado cp
       LEFT JOIN movimientos_personalizado m
-             ON m.card_id = cp.id
+             ON m.card_id = cp.id and m.activo = 1
       WHERE cp.user_id = :userId
         AND cp.archivado = 0
       GROUP BY cp.id, cp.nombre, cp.color_hex
@@ -66,9 +66,9 @@ public interface CardPersonalizadoRepository extends JpaRepository<CardPersonali
                    END), 0) AS saldo
       FROM cards_personalizado cp
       LEFT JOIN movimientos_personalizado m
-             ON m.card_id = cp.id
+             ON m.card_id = cp.id and m.activo = 1
       WHERE cp.user_id = :userId
-        AND cp.archivado = 0 and m.card_id = :idCard
+        AND cp.archivado = 0 and cp.id = :idCard
       GROUP BY cp.id, cp.nombre, cp.color_hex
       ORDER BY cp.created_at DESC
       """, nativeQuery = true)
