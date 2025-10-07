@@ -1,11 +1,7 @@
 package com.gestion.gastos.controller;
 
 import com.gestion.gastos.model.dto.*;
-import com.gestion.gastos.model.dto.proyección.CardPersonalizadoResumen;
-import com.gestion.gastos.model.dto.proyección.CategoriaPersonalizadoProjection;
-import com.gestion.gastos.model.dto.proyección.MovimientoPersonalizadoView;
-import com.gestion.gastos.model.dto.proyección.ReporteMovimientoPersonalizadoView;
-import com.gestion.gastos.model.entity.Categoria;
+import com.gestion.gastos.model.dto.proyección.*;
 import com.gestion.gastos.model.entity.CategoriaPersonalizadoEntity;
 import com.gestion.gastos.service.GastosPersonalizadosService;
 import lombok.RequiredArgsConstructor;
@@ -78,7 +74,5 @@ public class GastosPersonalizadosController {
     public MovimientoPersonalizadoView obtenerMovimientoPersonalizado(@PathVariable Long idMovimiento) {
         return gastosPersonalizadosService.obtenerMovimientoPersonalizado(idMovimiento);
     }
-
-
 
 }

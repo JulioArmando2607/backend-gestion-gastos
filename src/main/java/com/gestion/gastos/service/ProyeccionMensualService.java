@@ -1,24 +1,19 @@
 package com.gestion.gastos.service;
 
-import com.gestion.gastos.model.dto.*;
-import com.gestion.gastos.model.dto.proyección.*;
-import com.gestion.gastos.model.entity.*;
-import com.gestion.gastos.repository.CardPersonalizadoRepository;
-import com.gestion.gastos.repository.CategoriaPersonalizadoRepository;
-import com.gestion.gastos.repository.MovimientoPersonalizadoRepository;
-import jakarta.transaction.Transactional;
+import com.gestion.gastos.model.dto.proyección.CategoriasProyeccionProjection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+
 
 @Service
 @RequiredArgsConstructor
-public class GastosPersonalizadosService {
-    private final CardPersonalizadoRepository cardPersonalizadoRepository;
+public class ProyeccionMensualService {
+    public List<CategoriasProyeccionProjection> listarCategoriasProyeccionTodos() {
+        return  null;
+    }
+   /* private final CardPersonalizadoRepository cardPersonalizadoRepository;
     private final CategoriaPersonalizadoRepository categoriaPersonalizadoRepository;
     private final MovimientoPersonalizadoRepository movimientoPersonalizadoRepository;
     private final AuthService authService;
@@ -76,7 +71,7 @@ public class GastosPersonalizadosService {
         // unicidad por usuario
         if (categoriaPersonalizadoRepository.existsByUserIdAndNombreIgnoreCase(usuario.getId(), nombre)) {
             throw new IllegalArgumentException("Ya existe un card con ese nombre para el usuario.");
-        }*/
+        }
 
         CardPersonalizadoEntity cardRef =
                 cardPersonalizadoRepository.getReferenceById(Long.valueOf(categoria.getIdCard())); // proxy, sin SELECT
@@ -192,5 +187,5 @@ public class GastosPersonalizadosService {
     public MovimientoPersonalizadoView obtenerMovimientoPersonalizado(Long idMovimiento) {
         return  movimientoPersonalizadoRepository.obtenerMovimientoPersonalizado(idMovimiento);
 
-    }
+    } */
 }

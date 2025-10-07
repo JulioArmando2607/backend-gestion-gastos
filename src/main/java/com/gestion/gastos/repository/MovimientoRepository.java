@@ -1,6 +1,7 @@
 package com.gestion.gastos.repository;
 
 import com.gestion.gastos.model.dto.cardResumenResponse;
+import com.gestion.gastos.model.dto.proyección.DashboardProjection;
 import com.gestion.gastos.model.entity.Movimiento;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -29,4 +30,28 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
             nativeQuery = true)
     cardResumenResponse cardResumen(@Param("usuario") Long usuario );
 
+
+    @Query(value = """ 
+    SELECT 
+        MONTH(mp.fecha) AS mesNum, 
+        DATE_FORMAT(mp.fecha, '%Y-%m') AS mesTexto, 
+        SUM(mp.monto) AS gastoTotal 
+    FROM 
+        movimientos mp 
+    WHERE 
+        mp.activo = 1 
+        AND mp.tipo = 'GASTO' 
+        AND mp.usuario_id = :idUsuario 
+        AND YEAR(mp.fecha) = :anio 
+        AND MONTH(mp.fecha) = :mes
+    GROUP BY 
+        MONTH(mp.fecha), DATE_FORMAT(mp.fecha, '%Y-%m') 
+    ORDER BY 
+        mesNum
+    """,
+            nativeQuery = true)
+    List<DashboardProjection> listarDashboard(@Param("idUsuario") Long idUsuario,
+                                              @Param("mes") Long mes,
+                                              @Param("anio") Long anio
+    );
 }

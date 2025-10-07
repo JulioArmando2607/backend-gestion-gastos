@@ -60,5 +60,5 @@ public class MovimientoPersonalizadoEntity {
     private LocalDateTime updatedAt;
 
     @Column(nullable = false)
-    private Boolean activo = true;
+    private Boolean activo = true; 
 }

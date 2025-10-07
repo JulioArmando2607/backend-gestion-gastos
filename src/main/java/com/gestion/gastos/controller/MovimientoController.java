@@ -1,6 +1,7 @@
 package com.gestion.gastos.controller;
 
 import com.gestion.gastos.model.dto.cardResumenResponse;
+import com.gestion.gastos.model.dto.proyección.DashboardProjection;
 import com.gestion.gastos.model.entity.Movimiento;
 import com.gestion.gastos.model.entity.Usuario;
 import com.gestion.gastos.service.AuthService;
@@ -51,4 +52,8 @@ public class MovimientoController {
         return ResponseEntity.ok(actualizado);
     }
 
+    @GetMapping("/listar-dashboard/{anio}/{mes}")
+    public  List<DashboardProjection> listarDashboard(@PathVariable Long anio, @PathVariable Long mes) {
+        return movimientoService.listarDashboard(mes,anio);
+    }
 }

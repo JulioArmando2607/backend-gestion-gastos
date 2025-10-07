@@ -1,7 +1,7 @@
 package com.gestion.gastos.repository;
 
-import com.gestion.gastos.model.dto.MovimientoPersonalizado;
-import com.gestion.gastos.model.dto.cardResumenResponse;
+import com.gestion.gastos.model.dto.DashboardDTO;
+import com.gestion.gastos.model.dto.proyección.DashboardProjection;
 import com.gestion.gastos.model.dto.proyección.MovimientoPersonalizadoView;
 import com.gestion.gastos.model.dto.proyección.ReporteMovimientoPersonalizadoView;
 import com.gestion.gastos.model.entity.MovimientoPersonalizadoEntity;
@@ -37,7 +37,7 @@ public interface MovimientoPersonalizadoRepository extends JpaRepository<Movimie
 
 
         @Query(value = """
-              SELECT\s
+              SELECT
                     DATE_FORMAT(mp.fecha, '%Y-%m') AS mes,
                     mp.fecha,
                     mp.tipo,

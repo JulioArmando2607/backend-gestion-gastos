@@ -59,7 +59,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:60406/")); // ⚠️ Puedes reemplazar "*" por "http://localhost:57323" si prefieres
+        config.setAllowedOrigins(List.of("http://localhost:55641/")); // ⚠️ Puedes reemplazar "*" por "http://localhost:57323" si prefieres
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true); // importante si usas cookies o Authorization header
