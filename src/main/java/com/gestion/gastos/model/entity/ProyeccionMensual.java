@@ -40,7 +40,6 @@ public class ProyeccionMensual {
     @Column(name = "ahorro_estimado", precision = 10, scale = 2, nullable = false)
     private BigDecimal ahorroEstimado;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private String estado;
 

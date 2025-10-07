@@ -1,191 +1,241 @@
 package com.gestion.gastos.service;
 
+import com.gestion.gastos.model.dto.ApiOutResponseDto;
+import com.gestion.gastos.model.dto.ProyeccionCategoria;
 import com.gestion.gastos.model.dto.proyección.CategoriasProyeccionProjection;
+import com.gestion.gastos.model.entity.CategoriaProyeccion;
+import com.gestion.gastos.model.entity.DetalleProyeccion;
+import com.gestion.gastos.model.entity.ProyeccionMensual;
+import com.gestion.gastos.repository.CategoriaProyeccionRepository;
+import com.gestion.gastos.repository.DetalleProyeccionRepository;
+import com.gestion.gastos.repository.ProyeccionMensualRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 
 @Service
 @RequiredArgsConstructor
 public class ProyeccionMensualService {
-    public List<CategoriasProyeccionProjection> listarCategoriasProyeccionTodos() {
-        return  null;
-    }
-   /* private final CardPersonalizadoRepository cardPersonalizadoRepository;
-    private final CategoriaPersonalizadoRepository categoriaPersonalizadoRepository;
-    private final MovimientoPersonalizadoRepository movimientoPersonalizadoRepository;
-    private final AuthService authService;
 
-    public List<CardPersonalizadoResumen> listarCardsPorUsuario() {
-        Usuario usuario = authService.getUsuarioAutenticado();
+    private final ProyeccionMensualRepository proyeccionRepository;
+    private final CategoriaProyeccionRepository categoriaRepository;
+    private final DetalleProyeccionRepository detalleRepository;
+    ///private final ProyeccionCustomRepository proyeccionCustomRepository;
+    public List<CategoriasProyeccionProjection> listarCategoriasProyeccion(
+            Integer usuarioId,
+            Integer anio,
+            Integer mes) {
 
-        return cardPersonalizadoRepository.listarResumenPorUsuario(usuario.getId());
-
-    }
-
-    public CardPersonalizadoResponse crearGastoPersonalizado(CrearCardPersonalizadoRequest req) {
-        // normalizar
-        String nombre = req.getNombre().trim();
-        Usuario usuario = authService.getUsuarioAutenticado();
-
-        // unicidad por usuario
-        if (cardPersonalizadoRepository.existsByUserIdAndNombreIgnoreCase(usuario.getId(), nombre)) {
-            throw new IllegalArgumentException("Ya existe un card con ese nombre para el usuario.");
+        // Verificar si el usuario tiene categorías, si no, crear las predeterminadas
+        if (!categoriaRepository.existsByUsuarioId(usuarioId)) {
+            crearCategoriasPredeterminadas(usuarioId);
         }
 
-        // construir entidad
-        CardPersonalizadoEntity entity = CardPersonalizadoEntity.builder()
-                .userId(usuario.getId())
-                .nombre(nombre)
-                .descripcion(req.getDescripcion())
-                .moneda(Optional.ofNullable(req.getMoneda()).orElse("PEN").toUpperCase())
-                .colorHex(Optional.ofNullable(req.getColorHex()).orElse("#6C63FF"))
-             //   .icono(Optional.ofNullable(req.getIcono()).orElse("settings"))
-                .archivado(false)
-                .build();
-
-        CardPersonalizadoEntity saved = cardPersonalizadoRepository.save(entity);
-
-        // map a response
-        return CardPersonalizadoResponse.builder()
-                .id(saved.getId())
-                .userId(saved.getUserId())
-                .nombre(saved.getNombre())
-                .descripcion(saved.getDescripcion())
-                .moneda(saved.getMoneda())
-                .colorHex(saved.getColorHex())
-                .icono(saved.getIcono())
-                .archivado(Boolean.TRUE.equals(saved.getArchivado()))
-                .createdAt(saved.getCreatedAt())
-                .build();
+        // ⭐ Ahora usamos el método directo del repositorio
+        return categoriaRepository.findCategoriasConProyeccion(usuarioId, anio, mes);
     }
 
-    public CategoriaPersonalizadoEntity crearCategoria(CategoriaPersonalizadoRequest categoria) {
-        // normalizar
-        System.out.println(categoria.getIdCard());
-        String nombre = categoria.getNombre().trim();
-        Usuario usuario = authService.getUsuarioAutenticado();
-        /*
-        // unicidad por usuario
-        if (categoriaPersonalizadoRepository.existsByUserIdAndNombreIgnoreCase(usuario.getId(), nombre)) {
-            throw new IllegalArgumentException("Ya existe un card con ese nombre para el usuario.");
+    // ============================================
+    // GUARDAR/ACTUALIZAR PROYECCIÓN Y CATEGORÍA
+    // ============================================
+
+    @Transactional
+    public ApiOutResponseDto guardarProyeccionCategoria(ProyeccionCategoria dto, Integer usuarioId) {
+        ApiOutResponseDto response = new ApiOutResponseDto();
+
+        try {
+            // 1. Verificar o crear la proyección mensual
+            ProyeccionMensual proyeccion = obtenerOCrearProyeccion(
+                    usuarioId,
+                    dto.getAnio().intValue(),
+                    dto.getMes().intValue(),
+                    dto.getIngresoMensual()
+            );
+
+            // 2. Verificar si es una categoría nueva o existente
+            CategoriaProyeccion categoria;
+
+            if (dto.getIdCategoria() == null || dto.getIdCategoria() == 0) {
+                // Crear nueva categoría
+                categoria = crearNuevaCategoria(usuarioId, dto);
+            } else {
+                // Usar categoría existente
+                categoria = categoriaRepository.findById(dto.getIdCategoria().intValue())
+                        .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
+            }
+
+            // 3. Guardar o actualizar el detalle de proyección
+            DetalleProyeccion detalle = guardarDetalleProyeccion(
+                    proyeccion,
+                    categoria,
+                    dto.getMontoCategoria()
+            );
+
+            // 4. Recalcular totales
+            recalcularTotales(proyeccion);
+
+            response.setCodResultado(1);
+            response.setMsgResultado("Proyección guardada exitosamente");
+            response.setResponse(detalle.getId());
+
+        } catch (Exception e) {
+            response.setCodResultado(0);
+            response.setMsgResultado("Error al guardar proyección: " + e.getMessage());
         }
 
-        CardPersonalizadoEntity cardRef =
-                cardPersonalizadoRepository.getReferenceById(Long.valueOf(categoria.getIdCard())); // proxy, sin SELECT
+        return response;
+    }
 
-        CategoriaPersonalizadoEntity entity = CategoriaPersonalizadoEntity.builder()
-                .userId(usuario.getId())
-                .cardId(Long.valueOf(categoria.getIdCard()))                              // << aquí va la referencia
-                .nombre(categoria.getNombre())
-                .tipo(categoria.getTipoMovimiento())
-                .createdAt(LocalDateTime.now())            // o usa @CreationTimestamp
+    // ============================================
+    // MÉTODOS AUXILIARES
+    // ============================================
+
+    private ProyeccionMensual obtenerOCrearProyeccion(
+            Integer usuarioId,
+            Integer anio,
+            Integer mes,
+            BigDecimal ingresoMensual) {
+
+        Optional<ProyeccionMensual> proyeccionOpt =
+                proyeccionRepository.findByUsuarioIdAndAnioAndMes(usuarioId, anio, mes);
+
+        if (proyeccionOpt.isPresent()) {
+            // Actualizar ingreso si cambió
+            ProyeccionMensual proyeccion = proyeccionOpt.get();
+            if (ingresoMensual != null &&
+                    ingresoMensual.compareTo(proyeccion.getIngresoMensual()) != 0) {
+                proyeccion.setIngresoMensual(ingresoMensual);
+                proyeccion.setFechaActualizacion(LocalDateTime.now());
+                proyeccionRepository.save(proyeccion);
+            }
+            return proyeccion;
+        } else {
+            // Crear nueva proyección
+            ProyeccionMensual nuevaProyeccion = ProyeccionMensual.builder()
+                    .usuarioId(usuarioId)
+                    .anio(anio)
+                    .mes(mes)
+                    .ingresoMensual(ingresoMensual != null ? ingresoMensual : BigDecimal.ZERO)
+                    .totalGastos(BigDecimal.ZERO)
+                    .ahorroEstimado(BigDecimal.ZERO)
+                    .estado("ABIERTA")
+                    .fechaCreacion(LocalDateTime.now())
+                    .fechaActualizacion(LocalDateTime.now())
+                    .build();
+
+            return proyeccionRepository.save(nuevaProyeccion);
+        }
+    }
+
+    private CategoriaProyeccion crearNuevaCategoria(Integer usuarioId, ProyeccionCategoria dto) {
+        // Obtener el último orden
+        List<CategoriaProyeccion> categorias =
+                categoriaRepository.findByUsuarioIdAndActivaTrueOrderByOrden(usuarioId);
+
+        int nuevoOrden = categorias.isEmpty() ? 1 :
+                categorias.get(categorias.size() - 1).getOrden() + 1;
+
+        CategoriaProyeccion categoria = CategoriaProyeccion.builder()
+                .usuarioId(usuarioId)
+                .nombre(dto.getNombreCategoria())
+                .color(dto.getColorCategoria() != null ? dto.getColorCategoria() : "#E0E0E0")
+                .esPredeterminada(false)
+                .orden(nuevoOrden)
                 .activa(true)
+                .fechaCreacion(LocalDateTime.now())
                 .build();
 
-        return categoriaPersonalizadoRepository.save(entity);
-
+        return categoriaRepository.save(categoria);
     }
 
-    public List<CategoriaPersonalizadoProjection> listarCategoria(Integer idCard) {
-        Usuario usuario = authService.getUsuarioAutenticado();
+    private DetalleProyeccion guardarDetalleProyeccion(
+            ProyeccionMensual proyeccion,
+            CategoriaProyeccion categoria,
+            BigDecimal monto) {
 
-        return cardPersonalizadoRepository.listCategoriaPersonalizado(usuario.getId(), idCard);
+        Optional<DetalleProyeccion> detalleOpt =
+                detalleRepository.findByProyeccionIdAndCategoriaId(
+                        proyeccion.getId(),
+                        categoria.getId()
+                );
+
+        if (detalleOpt.isPresent()) {
+            // Actualizar existente
+            DetalleProyeccion detalle = detalleOpt.get();
+            detalle.setMontoProyectado(monto);
+            detalle.setFechaActualizacion(LocalDateTime.now());
+            return detalleRepository.save(detalle);
+        } else {
+            // Crear nuevo
+            DetalleProyeccion nuevoDetalle = DetalleProyeccion.builder()
+                    .proyeccion(proyeccion)
+                    .categoria(categoria)
+                    .montoProyectado(monto)
+                    .montoReal(BigDecimal.ZERO)
+                    .fechaCreacion(LocalDateTime.now())
+                    .fechaActualizacion(LocalDateTime.now())
+                    .build();
+
+            return detalleRepository.save(nuevoDetalle);
+        }
     }
-    public List<CategoriaPersonalizadoProjection> listCategoriaPersonalizadoxTipo(Integer idCard,String tipo) {
-        Usuario usuario = authService.getUsuarioAutenticado();
 
-        return cardPersonalizadoRepository.listCategoriaPersonalizadoxTipo(usuario.getId(), idCard,tipo);
-    }
+    private void recalcularTotales(ProyeccionMensual proyeccion) {
+        List<DetalleProyeccion> detalles =
+                detalleRepository.findByProyeccionId(proyeccion.getId());
 
-    public CardPersonalizadoResumen CardPersonalizadosxId(Integer idCard) {
-        Usuario usuario = authService.getUsuarioAutenticado();
+        BigDecimal totalGastos = detalles.stream()
+                .map(DetalleProyeccion::getMontoProyectado)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return cardPersonalizadoRepository.CardPersonalizadosxId(Math.toIntExact(usuario.getId()),idCard);
+        BigDecimal ahorroEstimado = proyeccion.getIngresoMensual().subtract(totalGastos);
 
-    }
+        proyeccion.setTotalGastos(totalGastos);
+        proyeccion.setAhorroEstimado(ahorroEstimado);
+        proyeccion.setFechaActualizacion(LocalDateTime.now());
 
-
-    public List<MovimientoPersonalizadoView> listMovimientoPersonalizado(Integer idCard) {
-        return  movimientoPersonalizadoRepository.listMovimientoPersonalizado(Long.valueOf(idCard));
-    }
-
-    public List<ReporteMovimientoPersonalizadoView> listarReporteCard(Integer idCard) {
-        return  movimientoPersonalizadoRepository.listarReporteCard(Long.valueOf(idCard));
+        proyeccionRepository.save(proyeccion);
     }
 
     @Transactional
-    public ApiOutResponseDto nuevoGasto(MovimientoPersonalizado dto) {
-        ApiOutResponseDto out = new ApiOutResponseDto();
+    public void crearCategoriasPredeterminadas(Integer usuarioId) {
+        List<CategoriaProyeccion> categorias = List.of(
+                crearCategoria(usuarioId, "Prestamo efectivo", "#E0E0E0", 1),
+                crearCategoria(usuarioId, "Pasajes", "#E0E0E0", 2),
+                crearCategoria(usuarioId, "Alimentos casa", "#E0E0E0", 3),
+                crearCategoria(usuarioId, "Prestamo colegio", "#E0E0E0", 4),
+                crearCategoria(usuarioId, "Pago Falabella", "#FFF59D", 5),
+                crearCategoria(usuarioId, "Pago Oh", "#FFAB91", 6),
+                crearCategoria(usuarioId, "Pago Movistar", "#81C784", 7),
+                crearCategoria(usuarioId, "Servicios Basicos", "#E0E0E0", 8),
+                crearCategoria(usuarioId, "Teléfono", "#FFF9C4", 9),
+                crearCategoria(usuarioId, "Roto", "#E0E0E0", 10),
+                crearCategoria(usuarioId, "Add", "#E0E0E0", 11),
+                crearCategoria(usuarioId, "Viejo", "#E0E0E0", 12),
+                crearCategoria(usuarioId, "Internet", "#E0E0E0", 13)
+        );
 
-        // 1) Carga la card (existe/activa)
-        CardPersonalizadoEntity cardRef = cardPersonalizadoRepository
-                .getReferenceById(dto.getIdCard());
-
-        // 2) Carga la categoría que pertenezca a esa misma card
-        CategoriaPersonalizadoEntity catRef = categoriaPersonalizadoRepository
-                .findByIdAndCardId(dto.getCategoria(), dto.getIdCard())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "La categoría " + dto.getCategoria() + " no pertenece a la card " + dto.getIdCard()
-                ));
-
-        // 3) Mapea el enum
-        var tipoEnum = CategoriaPersonalizadoEntity.TipoMovimiento.valueOf(dto.getTipo().toUpperCase());
-
-        MovimientoPersonalizadoEntity entity;
-
-        // 4) Si es edición
-        if (dto.getIdMovimiento() != null && dto.getIdMovimiento() > 0) {
-            entity = movimientoPersonalizadoRepository.findById(dto.getIdMovimiento())
-                    .orElseThrow(() -> new IllegalArgumentException("Movimiento no encontrado"));
-
-            entity.setCategoria(catRef);
-            entity.setTipo(tipoEnum);
-            entity.setMonto(dto.getMonto() instanceof BigDecimal
-                    ? (BigDecimal) dto.getMonto()
-                    : new BigDecimal(dto.getMonto().toString()));
-            entity.setFecha(dto.getFecha());
-            entity.setNota(dto.getDescripcion());
-            entity.setUpdatedAt(LocalDateTime.now()); // <-- si usas campo updatedAt
-
-            movimientoPersonalizadoRepository.save(entity);
-            out.setMsgResultado("Actualizado correctamente");
-
-        } else {
-            // 5) Nuevo movimiento
-            entity = MovimientoPersonalizadoEntity.builder()
-                    .card(cardRef)
-                    .categoria(catRef)
-                    .tipo(tipoEnum)
-                    .monto(dto.getMonto() instanceof BigDecimal
-                            ? (BigDecimal) dto.getMonto()
-                            : new BigDecimal(dto.getMonto().toString()))
-                    .fecha(dto.getFecha())
-                    .nota(dto.getDescripcion())
-                    .createdAt(LocalDateTime.now())
-                    .activo(true)
-                    .build();
-
-            movimientoPersonalizadoRepository.save(entity);
-            out.setMsgResultado("Registrado correctamente");
-        }
-
-        out.setCodResultado(200);
-        return out;
+        categoriaRepository.saveAll(categorias);
     }
 
-
-    public void eliminarMoviento(Long id) {
-        movimientoPersonalizadoRepository.findById(id).ifPresent(mov -> {
-            mov.setActivo(false);
-            movimientoPersonalizadoRepository.save(mov);
-        });
+    private CategoriaProyeccion crearCategoria(Integer usuarioId, String nombre, String color, int orden) {
+        return CategoriaProyeccion.builder()
+                .usuarioId(usuarioId)
+                .nombre(nombre)
+                .color(color)
+                .esPredeterminada(true)
+                .orden(orden)
+                .activa(true)
+                .fechaCreacion(LocalDateTime.now())
+                .build();
     }
-
-    public MovimientoPersonalizadoView obtenerMovimientoPersonalizado(Long idMovimiento) {
-        return  movimientoPersonalizadoRepository.obtenerMovimientoPersonalizado(idMovimiento);
-
-    } */
+    public ApiOutResponseDto cerrarProyeccion(Integer proyeccionId) {
+        return  null;
+    }
 }
