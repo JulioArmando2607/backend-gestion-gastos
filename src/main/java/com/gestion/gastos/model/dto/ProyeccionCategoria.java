@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 public class ProyeccionCategoria {
     private Long idProyeccion;
     private Long idCategoria;
+    private Long idUsuario;
 
     private String nombreCategoria;
     private String colorCategoria;

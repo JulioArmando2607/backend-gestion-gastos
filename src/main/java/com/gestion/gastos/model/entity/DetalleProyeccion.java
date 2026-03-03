@@ -44,5 +44,11 @@ public class DetalleProyeccion {
 
     @Column(name = "fecha_actualizacion")
     private LocalDateTime fechaActualizacion;
+
+    @Column(nullable = false)
+    private Integer anio;
+
+    @Column(nullable = false)
+    private Integer mes;
 }
 

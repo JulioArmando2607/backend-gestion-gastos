@@ -39,13 +39,36 @@ public class ProyeccionMensualController {
      * POST /api/proyeccion/{usuarioId}
      * Guardar o actualizar monto de una categoría
      */
-    @PostMapping("/{usuarioId}")
-    public ResponseEntity<ApiOutResponseDto> guardarProyeccion(
+    @PostMapping("/nueva-proyeccion-categoria/{usuarioId}")
+    public ResponseEntity<ApiOutResponseDto> guardarProyeccionCategoria(
             @PathVariable Integer usuarioId,
             @RequestBody ProyeccionCategoria proyeccionCategoria) {
 
         ApiOutResponseDto response =
                 service.guardarProyeccionCategoria(proyeccionCategoria, usuarioId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/nueva-proyeccion/{usuarioId}")
+    public ResponseEntity<ApiOutResponseDto> guardarProyeccion(
+            @PathVariable Integer usuarioId,
+            @RequestBody ProyeccionCategoria proyeccionCategoria) {
+
+        ApiOutResponseDto response =
+                service.guardarProyeccion(proyeccionCategoria, usuarioId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/detalle-proyeccion/{usuarioId}/{anio}/{mes}")
+    public ResponseEntity<ApiOutResponseDto> detalleProyeccion(
+            @PathVariable Integer usuarioId,
+            @PathVariable Integer anio,@PathVariable Integer mes
+             ) {
+
+        ApiOutResponseDto response =
+                service.detalleProyeccion(usuarioId,anio,mes);
 
         return ResponseEntity.ok(response);
     }

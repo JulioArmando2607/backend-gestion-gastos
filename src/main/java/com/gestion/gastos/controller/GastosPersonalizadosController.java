@@ -60,7 +60,6 @@ public class GastosPersonalizadosController {
 
     @PostMapping("/nuevo-gasto")
     public ApiOutResponseDto nuevoGasto(@RequestBody MovimientoPersonalizado movimientoPersonalizado) {
-
         return  gastosPersonalizadosService.nuevoGasto(movimientoPersonalizado) ;
     }
 

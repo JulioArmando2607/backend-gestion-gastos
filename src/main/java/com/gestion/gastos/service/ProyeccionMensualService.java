@@ -45,51 +45,61 @@ public class ProyeccionMensualService {
     // GUARDAR/ACTUALIZAR PROYECCIÓN Y CATEGORÍA
     // ============================================
 
-    @Transactional
+    // ===== Publico: orquesta y arma la respuesta (sin @Transactional) =====
     public ApiOutResponseDto guardarProyeccionCategoria(ProyeccionCategoria dto, Integer usuarioId) {
         ApiOutResponseDto response = new ApiOutResponseDto();
-
         try {
-            // 1. Verificar o crear la proyección mensual
-            ProyeccionMensual proyeccion = obtenerOCrearProyeccion(
-                    usuarioId,
-                    dto.getAnio().intValue(),
-                    dto.getMes().intValue(),
-                    dto.getIngresoMensual()
-            );
+            // Validaciones previas (antes de abrir transacción)
+            if (usuarioId == null) throw new IllegalArgumentException("usuarioId es obligatorio");
+            if (dto == null) throw new IllegalArgumentException("dto es obligatorio");
+            if (dto.getAnio() == null) throw new IllegalArgumentException("anio es obligatorio");
+            if (dto.getMes() == null) throw new IllegalArgumentException("mes es obligatorio");
+            if (dto.getIngresoMensual() == null) throw new IllegalArgumentException("ingresoMensual es obligatorio");
+            if (dto.getMontoCategoria() == null) throw new IllegalArgumentException("montoCategoria es obligatorio");
 
-            // 2. Verificar si es una categoría nueva o existente
-            CategoriaProyeccion categoria;
-
-            if (dto.getIdCategoria() == null || dto.getIdCategoria() == 0) {
-                // Crear nueva categoría
-                categoria = crearNuevaCategoria(usuarioId, dto);
-            } else {
-                // Usar categoría existente
-                categoria = categoriaRepository.findById(dto.getIdCategoria().intValue())
-                        .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
-            }
-
-            // 3. Guardar o actualizar el detalle de proyección
-            DetalleProyeccion detalle = guardarDetalleProyeccion(
-                    proyeccion,
-                    categoria,
-                    dto.getMontoCategoria()
-            );
-
-            // 4. Recalcular totales
-            recalcularTotales(proyeccion);
-
+            Long idDetalle = guardarProyeccionCategoriaTx(dto, usuarioId); // puede lanzar excepción
             response.setCodResultado(1);
             response.setMsgResultado("Proyección guardada exitosamente");
-            response.setResponse(detalle.getId());
-
+            response.setResponse(idDetalle);
         } catch (Exception e) {
+            // Cualquier excepción hace rollback en el método TX; aquí solo armamos la salida
             response.setCodResultado(0);
             response.setMsgResultado("Error al guardar proyección: " + e.getMessage());
         }
-
         return response;
+    }
+
+    // ===== Privado/Protegido: hace el trabajo dentro de una transacción =====
+    @Transactional
+    protected Long guardarProyeccionCategoriaTx(ProyeccionCategoria dto, Integer usuarioId) {
+        // 1. Verificar o crear la proyección mensual
+        ProyeccionMensual proyeccion = obtenerOCrearProyeccion(
+                usuarioId,
+                dto.getAnio().intValue(),
+                dto.getMes().intValue(),
+                dto.getIngresoMensual()
+        );
+
+        // 2. Verificar si es una categoría nueva o existente
+        final CategoriaProyeccion categoria;
+        if (dto.getIdCategoria() == null || dto.getIdCategoria() == 0) {
+            categoria = crearNuevaCategoria(usuarioId, dto);
+        } else {
+            categoria = categoriaRepository.findById(dto.getIdCategoria().intValue())
+                    .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
+        }
+
+        // 3. Guardar o actualizar el detalle de proyección
+        DetalleProyeccion detalle = guardarDetalleProyeccion(
+                proyeccion,
+                categoria,
+                dto.getMontoCategoria()
+        );
+
+        // 4. Recalcular totales
+        recalcularTotales(proyeccion);
+
+        return detalle.getId().longValue();
     }
 
     // ============================================
@@ -160,9 +170,11 @@ public class ProyeccionMensualService {
             BigDecimal monto) {
 
         Optional<DetalleProyeccion> detalleOpt =
-                detalleRepository.findByProyeccionIdAndCategoriaId(
+                detalleRepository.findByProyeccionIdAndCategoriaIdAndMesAndAnio(
                         proyeccion.getId(),
-                        categoria.getId()
+                        categoria.getId(),
+                        proyeccion.getMes(),
+                        proyeccion.getAnio()
                 );
 
         if (detalleOpt.isPresent()) {
@@ -180,6 +192,9 @@ public class ProyeccionMensualService {
                     .montoReal(BigDecimal.ZERO)
                     .fechaCreacion(LocalDateTime.now())
                     .fechaActualizacion(LocalDateTime.now())
+
+                    .mes(proyeccion.getMes())
+                    .anio(proyeccion.getAnio())
                     .build();
 
             return detalleRepository.save(nuevoDetalle);
@@ -237,5 +252,39 @@ public class ProyeccionMensualService {
     }
     public ApiOutResponseDto cerrarProyeccion(Integer proyeccionId) {
         return  null;
+    }
+
+    public ApiOutResponseDto guardarProyeccion(ProyeccionCategoria dto, Integer usuarioId) {
+        // 1. Verificar o crear la proyección mensual
+        ApiOutResponseDto apiOutResponseDto = new ApiOutResponseDto();
+        ProyeccionMensual proyeccion = obtenerOCrearProyeccion(
+                usuarioId,
+                dto.getAnio().intValue(),
+                dto.getMes().intValue(),
+                dto.getIngresoMensual()
+        );
+
+        if(proyeccion.getId()>0){
+            apiOutResponseDto.setMsgResultado("registrado");
+            apiOutResponseDto.setCodResultado(1);
+            apiOutResponseDto.setResponse(proyeccion);
+        }
+        return apiOutResponseDto;
+    }
+    public ApiOutResponseDto detalleProyeccion(Integer usuarioId, Integer anio, Integer mes) {
+        ApiOutResponseDto apiOutResponseDto = new ApiOutResponseDto();
+
+        Optional<ProyeccionMensual> proyeccionOpt =
+                proyeccionRepository.findByUsuarioIdAndAnioAndMes(usuarioId, anio, mes);
+
+        if (proyeccionOpt.isPresent()) {
+            apiOutResponseDto.setResponse(proyeccionOpt.get());
+        } else {
+            apiOutResponseDto.setResponse(null); // O una lista vacía dependiendo del tipo
+            // O puedes devolver un objeto vacío:
+            // apiOutResponseDto.setResponse(new ProyeccionMensual());
+        }
+
+        return apiOutResponseDto;
     }
 }

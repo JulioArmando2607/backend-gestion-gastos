@@ -12,7 +12,7 @@ import java.util.Optional;
 @Repository
 public interface DetalleProyeccionRepository extends JpaRepository<DetalleProyeccion, Integer> {
 
-    Optional<DetalleProyeccion> findByProyeccionIdAndCategoriaId(Integer proyeccionId, Integer categoriaId);
+    Optional<DetalleProyeccion> findByProyeccionIdAndCategoriaIdAndMesAndAnio(Integer proyeccionId, Integer categoriaId, Integer mes, Integer anio);
 
     List<DetalleProyeccion> findByProyeccionId(Integer proyeccionId);
 

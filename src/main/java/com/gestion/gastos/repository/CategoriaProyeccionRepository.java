@@ -30,11 +30,12 @@ public interface CategoriaProyeccionRepository extends JpaRepository<CategoriaPr
             COALESCE(pm.ahorro_estimado, 0) as ahorroEstimado,
             COALESCE(pm.estado, 'NUEVA') as estado
         FROM categorias_proyeccion c
-        LEFT JOIN detalle_proyeccion d ON c.id = d.id_categoria
+        LEFT JOIN detalle_proyeccion d ON c.id = d.id_categoria 
+            AND d.anio = :anio
+            AND d.mes = :mes
         LEFT JOIN proyeccion_mensual pm ON d.id_proyeccion = pm.id 
             AND pm.usuario_id = :usuarioId
-            AND pm.anio = :anio
-            AND pm.mes = :mes
+            
         WHERE c.usuario_id = :usuarioId
           AND c.activa = TRUE
         ORDER BY c.orden
