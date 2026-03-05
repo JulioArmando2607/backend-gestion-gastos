@@ -46,4 +46,12 @@ public class UsuarioService {
 
         return usuarioRepository.save(existente); // actualiza, nunca inserta porque ya existe
     }
+
+    public boolean mostrarBoton(String codigoBoton) {
+        if(usuarioRepository.mostrarBoton(codigoBoton).equals(1)){
+         return true;
+        }else{
+            return false;
+        }
+    }
 }

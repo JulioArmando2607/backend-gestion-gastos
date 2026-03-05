@@ -33,4 +33,9 @@ public class AuthController {
         Usuario nuevo = usuarioService.guardar(usuario);
         return ResponseEntity.ok(nuevo);
     }
+
+    @GetMapping("/mostar-boton/{codigoBoton}")
+    public boolean mostrarBoton(@PathVariable String codigoBoton) {
+        return usuarioService.mostrarBoton(codigoBoton);
+    }
 }
