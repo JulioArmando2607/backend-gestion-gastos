@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface ProyeccionMensualRepository extends JpaRepository<ProyeccionMensual, Integer> {
     Optional<ProyeccionMensual> findByUsuarioIdAndAnioAndMes(Integer usuarioId, Integer anio, Integer mes);
     boolean existsByUsuarioIdAndAnioAndMes(Integer usuarioId, Integer anio, Integer mes);
+    boolean existsByIdAndUsuarioId(Integer id, Integer usuarioId);
 }

@@ -97,7 +97,7 @@ public class ProyeccionMensualService {
         );
 
         // 4. Recalcular totales
-        recalcularTotales(proyeccion);
+            recalcularTotales(proyeccion);
 
         return detalle.getId().longValue();
     }
@@ -250,8 +250,49 @@ public class ProyeccionMensualService {
                 .fechaCreacion(LocalDateTime.now())
                 .build();
     }
-    public ApiOutResponseDto cerrarProyeccion(Integer proyeccionId) {
-        return  null;
+    @Transactional
+    public ApiOutResponseDto cerrarProyeccion(Integer usuarioId, Integer anio, Integer mes) {
+        ApiOutResponseDto out = new ApiOutResponseDto();
+        try {
+            if (usuarioId == null || anio == null || mes == null) {
+                out.setCodResultado(1001);
+                out.setMsgResultado("usuarioId, anio y mes son obligatorios");
+                out.setResponse(null);
+                return out;
+            }
+
+            Optional<ProyeccionMensual> proyeccionOpt =
+                    proyeccionRepository.findByUsuarioIdAndAnioAndMes(usuarioId, anio, mes);
+
+            if (proyeccionOpt.isEmpty()) {
+                out.setCodResultado(1004);
+                out.setMsgResultado("No existe proyeccion para el periodo indicado");
+                out.setResponse(null);
+                return out;
+            }
+
+            ProyeccionMensual proyeccion = proyeccionOpt.get();
+            if ("CERRADA".equalsIgnoreCase(proyeccion.getEstado())) {
+                out.setCodResultado(1);
+                out.setMsgResultado("La proyeccion ya estaba cerrada");
+                out.setResponse(proyeccion);
+                return out;
+            }
+
+            proyeccion.setEstado("CERRADA");
+            proyeccion.setFechaCierre(LocalDateTime.now());
+            proyeccion.setFechaActualizacion(LocalDateTime.now());
+            proyeccion = proyeccionRepository.save(proyeccion);
+
+            out.setCodResultado(1);
+            out.setMsgResultado("Proyeccion cerrada exitosamente");
+            out.setResponse(proyeccion);
+        } catch (Exception e) {
+            out.setCodResultado(1999);
+            out.setMsgResultado("Error al cerrar proyeccion: " + e.getMessage());
+            out.setResponse(null);
+        }
+        return out;
     }
 
     public ApiOutResponseDto guardarProyeccion(ProyeccionCategoria dto, Integer usuarioId) {

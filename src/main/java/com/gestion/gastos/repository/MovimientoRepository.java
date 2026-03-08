@@ -32,22 +32,22 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
 
 
     @Query(value = """ 
-    SELECT 
-        MONTH(mp.fecha) AS mesNum, 
-        DATE_FORMAT(mp.fecha, '%Y-%m') AS mesTexto, 
-        SUM(mp.monto) AS gastoTotal 
-    FROM 
-        movimientos mp 
-    WHERE 
-        mp.activo = 1 
-        AND mp.tipo = 'GASTO' 
-        AND mp.usuario_id = :idUsuario 
-        AND YEAR(mp.fecha) = :anio 
-        AND MONTH(mp.fecha) = :mes
-    GROUP BY 
-        MONTH(mp.fecha), DATE_FORMAT(mp.fecha, '%Y-%m') 
-    ORDER BY 
-        mesNum
+     SELECT
+                 MONTH(mp.fecha) AS mesNum,
+                 DATE_FORMAT(mp.fecha, '%Y-%m') AS mesTexto,
+                 SUM(CASE WHEN mp.tipo = 'GASTO' THEN mp.monto ELSE 0 END) AS gastoTotal,
+                 SUM(CASE WHEN mp.tipo = 'INGRESO' THEN mp.monto ELSE 0 END) AS ingresoTotal
+             FROM movimientos mp
+             WHERE
+                 mp.activo = 1
+                 AND mp.usuario_id = :idUsuario
+                 AND YEAR(mp.fecha) = :anio
+                 AND MONTH(mp.fecha) = :mes
+             GROUP BY
+                 MONTH(mp.fecha),
+                 DATE_FORMAT(mp.fecha, '%Y-%m')
+             ORDER BY
+                 mesNum;
     """,
             nativeQuery = true)
     List<DashboardProjection> listarDashboard(@Param("idUsuario") Long idUsuario,

@@ -6,4 +6,5 @@ public interface DashboardProjection {
     Long getMesNum();
     String getMesTexto();
     BigDecimal getGastoTotal();
+    BigDecimal getIngresoTotal();
 }

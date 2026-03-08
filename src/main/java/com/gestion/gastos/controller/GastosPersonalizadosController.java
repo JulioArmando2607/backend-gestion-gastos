@@ -74,4 +74,10 @@ public class GastosPersonalizadosController {
         return gastosPersonalizadosService.obtenerMovimientoPersonalizado(idMovimiento);
     }
 
+    @DeleteMapping("eliminar-categoria/{id}")
+    public ResponseEntity<Void> eliminarCategoria(@PathVariable Long id) {
+        gastosPersonalizadosService.eliminarCategoria(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

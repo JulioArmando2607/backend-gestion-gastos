@@ -193,4 +193,11 @@ public class GastosPersonalizadosService {
         return  movimientoPersonalizadoRepository.obtenerMovimientoPersonalizado(idMovimiento);
 
     }
+
+    public void eliminarCategoria(Long id) {
+        categoriaPersonalizadoRepository.findById(id).ifPresent(mov -> {
+            mov.setActiva(false);
+            categoriaPersonalizadoRepository.save(mov);
+        });
+    }
 }
