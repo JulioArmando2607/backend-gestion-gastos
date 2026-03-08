@@ -59,7 +59,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("https://ambientepruebas.pais.gob.pe", "http://localhost:53275","https://www.cashlyplus.com", "cashlyplus.com")); // Asegúrate de agregar los orígenes correctos
+        config.setAllowedOrigins(List.of("https://cashlyplus.com","https://ambientepruebas.pais.gob.pe", "http://localhost:53275","https://www.cashlyplus.com", "cashlyplus.com")); // Asegúrate de agregar los orígenes correctos
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true); // importante si usas cookies o Authorization header
