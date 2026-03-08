@@ -2,7 +2,7 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY pom.xml .
-# cachea dependencias (modo batch = logs más limpios)
+# cachea dependencias (modo batch = logs mas limpios)
 RUN mvn -q -B -DskipTests dependency:go-offline
 COPY src ./src
 RUN mvn -q -B -DskipTests package
@@ -10,8 +10,14 @@ RUN mvn -q -B -DskipTests package
 # ====== Run ======
 FROM eclipse-temurin:21-jre
 WORKDIR /app
+
+# Establecer la zona horaria del contenedor
+RUN ln -snf /usr/share/zoneinfo/America/Lima /etc/localtime && \
+    echo "America/Lima" > /etc/timezone
+
 # usuario no-root
 RUN useradd -ms /bin/bash appuser
+
 USER appuser
 # copia el jar construido
 COPY --from=build /app/target/*.jar app.jar
