@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CardPersonalizadoRepository extends JpaRepository<CardPersonalizadoEntity, Long> {//
 
@@ -36,6 +37,8 @@ public interface CardPersonalizadoRepository extends JpaRepository<CardPersonali
     List<CardPersonalizadoResumen> listarResumenPorUsuario(@Param("userId") Long userId);
 
     boolean existsByUserIdAndNombreIgnoreCase(Long userId, String nombre);
+    boolean existsByUserIdAndNombreIgnoreCaseAndIdNot(Long userId, String nombre, Long id);
+    Optional<CardPersonalizadoEntity> findByIdAndUserId(Long id, Long userId);
 
     @Query(value = """
       SELECT id,nombre from categorias_personalizado where activa = 1 and user_id = :userId and card_id = :idCard

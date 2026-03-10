@@ -80,4 +80,17 @@ public class GastosPersonalizadosController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/editar-card/{idCard}")
+    public ResponseEntity<ApiOutResponseDto> editarCard(
+            @PathVariable Long idCard,
+            @RequestBody EditarCardPersonalizadoRequest request
+    ) {
+        return ResponseEntity.ok(gastosPersonalizadosService.editarCard(idCard, request));
+    }
+
+    @DeleteMapping("/eliminar-card/{idCard}")
+    public ResponseEntity<ApiOutResponseDto> eliminarCard(@PathVariable Long idCard) {
+        return ResponseEntity.ok(gastosPersonalizadosService.eliminarCard(idCard));
+    }
+
 }

@@ -200,4 +200,126 @@ public class GastosPersonalizadosService {
             categoriaPersonalizadoRepository.save(mov);
         });
     }
+
+    @Transactional
+    public ApiOutResponseDto editarCard(Long idCard, EditarCardPersonalizadoRequest req) {
+        ApiOutResponseDto out = new ApiOutResponseDto();
+
+        if (idCard == null || idCard <= 0) {
+            out.setCodResultado(1001);
+            out.setMsgResultado("idCard es obligatorio");
+            out.setResponse(null);
+            return out;
+        }
+        if (req == null) {
+            out.setCodResultado(1001);
+            out.setMsgResultado("Request es obligatorio");
+            out.setResponse(null);
+            return out;
+        }
+
+        Usuario usuario = authService.getUsuarioAutenticado();
+        Optional<CardPersonalizadoEntity> cardOpt = cardPersonalizadoRepository.findByIdAndUserId(idCard, usuario.getId());
+        if (cardOpt.isEmpty()) {
+            out.setCodResultado(1004);
+            out.setMsgResultado("No existe card para el usuario autenticado");
+            out.setResponse(null);
+            return out;
+        }
+
+        CardPersonalizadoEntity card = cardOpt.get();
+        if (Boolean.TRUE.equals(card.getArchivado())) {
+            out.setCodResultado(1001);
+            out.setMsgResultado("No se puede editar una card archivada");
+            out.setResponse(null);
+            return out;
+        }
+
+        if (req.getNombre() != null) {
+            String nombre = req.getNombre().trim();
+            if (nombre.isEmpty()) {
+                out.setCodResultado(1001);
+                out.setMsgResultado("nombre no puede ser vacio");
+                out.setResponse(null);
+                return out;
+            }
+
+            boolean existeOtro = cardPersonalizadoRepository
+                    .existsByUserIdAndNombreIgnoreCaseAndIdNot(usuario.getId(), nombre, idCard);
+            if (existeOtro) {
+                out.setCodResultado(1005);
+                out.setMsgResultado("Ya existe otra card con ese nombre para el usuario");
+                out.setResponse(null);
+                return out;
+            }
+            card.setNombre(nombre);
+        }
+
+        if (req.getDescripcion() != null) {
+            card.setDescripcion(req.getDescripcion());
+        }
+        if (req.getMoneda() != null && !req.getMoneda().isBlank()) {
+            card.setMoneda(req.getMoneda().toUpperCase());
+        }
+        if (req.getColorHex() != null && !req.getColorHex().isBlank()) {
+            card.setColorHex(req.getColorHex());
+        }
+
+        CardPersonalizadoEntity saved = cardPersonalizadoRepository.save(card);
+        CardPersonalizadoResponse response = CardPersonalizadoResponse.builder()
+                .id(saved.getId())
+                .userId(saved.getUserId())
+                .nombre(saved.getNombre())
+                .descripcion(saved.getDescripcion())
+                .moneda(saved.getMoneda())
+                .colorHex(saved.getColorHex())
+                .icono(saved.getIcono())
+                .archivado(Boolean.TRUE.equals(saved.getArchivado()))
+                .createdAt(saved.getCreatedAt())
+                .build();
+
+        out.setCodResultado(1);
+        out.setMsgResultado("Card actualizada correctamente");
+        out.setResponse(response);
+        return out;
+    }
+
+    @Transactional
+    public ApiOutResponseDto eliminarCard(Long idCard) {
+        ApiOutResponseDto out = new ApiOutResponseDto();
+
+        if (idCard == null || idCard <= 0) {
+            out.setCodResultado(1001);
+            out.setMsgResultado("idCard es obligatorio");
+            out.setResponse(null);
+            return out;
+        }
+
+        Usuario usuario = authService.getUsuarioAutenticado();
+        Optional<CardPersonalizadoEntity> cardOpt = cardPersonalizadoRepository
+                .findByIdAndUserId(idCard, usuario.getId());
+
+        if (cardOpt.isEmpty()) {
+            out.setCodResultado(1004);
+            out.setMsgResultado("No existe card para el usuario autenticado");
+            out.setResponse(null);
+            return out;
+        }
+
+        CardPersonalizadoEntity card = cardOpt.get();
+        if (Boolean.TRUE.equals(card.getArchivado())) {
+            out.setCodResultado(1);
+            out.setMsgResultado("La card ya estaba archivada");
+            out.setResponse(card.getId());
+            return out;
+        }
+
+        card.setArchivado(true);
+        cardPersonalizadoRepository.save(card);
+
+        out.setCodResultado(1);
+        out.setMsgResultado("Card archivada correctamente");
+        out.setResponse(card.getId());
+        return out;
+    }
 }
