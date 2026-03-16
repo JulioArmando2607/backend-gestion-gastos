@@ -39,6 +39,7 @@ public interface CardPersonalizadoRepository extends JpaRepository<CardPersonali
     boolean existsByUserIdAndNombreIgnoreCase(Long userId, String nombre);
     boolean existsByUserIdAndNombreIgnoreCaseAndIdNot(Long userId, String nombre, Long id);
     Optional<CardPersonalizadoEntity> findByIdAndUserId(Long id, Long userId);
+    Optional<CardPersonalizadoEntity> findById(Long id);
 
     @Query(value = """
       SELECT id,nombre from categorias_personalizado where activa = 1 and user_id = :userId and card_id = :idCard
@@ -76,4 +77,26 @@ public interface CardPersonalizadoRepository extends JpaRepository<CardPersonali
       ORDER BY cp.created_at DESC
       """, nativeQuery = true)
     CardPersonalizadoResumen CardPersonalizadosxId(@Param("userId") Integer userId,@Param("idCard") Integer idCard);
+
+    @Query(value = """
+      SELECT
+        cp.id                              AS id,
+        cp.nombre                          AS nombre,
+        cp.color_hex                       AS colorHex,
+        cp.descripcion                     AS descripcion,
+        cp.moneda                          AS moneda,
+        COALESCE(SUM(CASE WHEN m.tipo='INGRESO' THEN m.monto END), 0) AS ingresos,
+        COALESCE(SUM(CASE WHEN m.tipo='GASTO'   THEN m.monto END), 0) AS gastos,
+        COALESCE(SUM(CASE 
+                     WHEN m.tipo='INGRESO' THEN m.monto
+                     WHEN m.tipo='GASTO'   THEN -m.monto
+                   END), 0) AS saldo
+      FROM cards_personalizado cp
+      LEFT JOIN movimientos_personalizado m
+             ON m.card_id = cp.id and m.activo = 1
+      WHERE cp.archivado = 0
+        AND cp.id = :idCard
+      GROUP BY cp.id, cp.nombre, cp.color_hex, cp.descripcion, cp.moneda
+      """, nativeQuery = true)
+    CardPersonalizadoResumen CardPersonalizadosxIdSinValidacion(@Param("idCard") Long idCard);
 }

@@ -9,8 +9,12 @@ import com.gestion.gastos.model.entity.ProyeccionMensual;
 import com.gestion.gastos.repository.CategoriaProyeccionRepository;
 import com.gestion.gastos.repository.DetalleProyeccionRepository;
 import com.gestion.gastos.repository.ProyeccionMensualRepository;
+import com.gestion.gastos.repository.UsuarioRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,11 +30,13 @@ public class ProyeccionMensualService {
     private final ProyeccionMensualRepository proyeccionRepository;
     private final CategoriaProyeccionRepository categoriaRepository;
     private final DetalleProyeccionRepository detalleRepository;
+    private final UsuarioRepository usuarioRepository;
     ///private final ProyeccionCustomRepository proyeccionCustomRepository;
     public List<CategoriasProyeccionProjection> listarCategoriasProyeccion(
             Integer usuarioId,
             Integer anio,
             Integer mes) {
+        validarUsuarioAutenticado(usuarioId);
 
         // Verificar si el usuario tiene categorías, si no, crear las predeterminadas
         if (!categoriaRepository.existsByUsuarioId(usuarioId)) {
@@ -47,6 +53,7 @@ public class ProyeccionMensualService {
 
     // ===== Publico: orquesta y arma la respuesta (sin @Transactional) =====
     public ApiOutResponseDto guardarProyeccionCategoria(ProyeccionCategoria dto, Integer usuarioId) {
+        validarUsuarioAutenticado(usuarioId);
         ApiOutResponseDto response = new ApiOutResponseDto();
         try {
             // Validaciones previas (antes de abrir transacción)
@@ -220,6 +227,7 @@ public class ProyeccionMensualService {
 
     @Transactional
     public void crearCategoriasPredeterminadas(Integer usuarioId) {
+        validarUsuarioAutenticado(usuarioId);
         List<CategoriaProyeccion> categorias = List.of(
                 crearCategoria(usuarioId, "Prestamo efectivo", "#E0E0E0", 1),
                 crearCategoria(usuarioId, "Pasajes", "#E0E0E0", 2),
@@ -253,6 +261,7 @@ public class ProyeccionMensualService {
     @Transactional
     public ApiOutResponseDto cerrarProyeccion(Integer usuarioId, Integer anio, Integer mes) {
         ApiOutResponseDto out = new ApiOutResponseDto();
+        validarUsuarioAutenticado(usuarioId);
         try {
             if (usuarioId == null || anio == null || mes == null) {
                 out.setCodResultado(1001);
@@ -296,6 +305,7 @@ public class ProyeccionMensualService {
     }
 
     public ApiOutResponseDto guardarProyeccion(ProyeccionCategoria dto, Integer usuarioId) {
+        validarUsuarioAutenticado(usuarioId);
         // 1. Verificar o crear la proyección mensual
         ApiOutResponseDto apiOutResponseDto = new ApiOutResponseDto();
         ProyeccionMensual proyeccion = obtenerOCrearProyeccion(
@@ -313,6 +323,7 @@ public class ProyeccionMensualService {
         return apiOutResponseDto;
     }
     public ApiOutResponseDto detalleProyeccion(Integer usuarioId, Integer anio, Integer mes) {
+        validarUsuarioAutenticado(usuarioId);
         ApiOutResponseDto apiOutResponseDto = new ApiOutResponseDto();
 
         Optional<ProyeccionMensual> proyeccionOpt =
@@ -327,5 +338,28 @@ public class ProyeccionMensualService {
         }
 
         return apiOutResponseDto;
+    }
+
+    public List<ProyeccionMensual> listarMisProyecciones() {
+        Integer usuarioId = obtenerUsuarioAutenticadoId();
+        return proyeccionRepository.findByUsuarioIdOrderByAnioDescMesDesc(usuarioId);
+    }
+
+    private void validarUsuarioAutenticado(Integer usuarioId) {
+        Integer autenticadoId = obtenerUsuarioAutenticadoId();
+        if (!autenticadoId.equals(usuarioId)) {
+            throw new AccessDeniedException("No tienes permiso para operar sobre otro usuario");
+        }
+    }
+
+    private Integer obtenerUsuarioAutenticadoId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new AccessDeniedException("Usuario no autenticado");
+        }
+
+        return usuarioRepository.findByEmail(authentication.getName())
+                .map(usuario -> Math.toIntExact(usuario.getId()))
+                .orElseThrow(() -> new AccessDeniedException("Usuario autenticado no encontrado"));
     }
 }

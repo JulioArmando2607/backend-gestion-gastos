@@ -26,9 +26,9 @@ public class CompartirProyeccionController {
         return ResponseEntity.ok(compartirProyeccionService.listarRecibidas(idPersona));
     }
 
-    @GetMapping("/enviadas/{idPersona}")
-    public ResponseEntity<ApiOutResponseDto> listarEnviadas(@PathVariable Integer idPersona) {
-        return ResponseEntity.ok(compartirProyeccionService.listarEnviadas(idPersona));
+    @GetMapping("/enviadas/{idPersona}/{idProyeccion}")
+    public ResponseEntity<ApiOutResponseDto> listarEnviadas(@PathVariable Integer idPersona,@PathVariable Integer idProyeccion) {
+        return ResponseEntity.ok(compartirProyeccionService.listarEnviadas(idPersona, idProyeccion));
     }
 
     @PutMapping("/{id}/desactivar")

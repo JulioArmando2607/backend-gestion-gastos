@@ -1,8 +1,19 @@
 package com.gestion.gastos.service;
 
-import com.gestion.gastos.model.dto.*;
-import com.gestion.gastos.model.dto.proyección.*;
-import com.gestion.gastos.model.entity.*;
+import com.gestion.gastos.model.dto.ApiOutResponseDto;
+import com.gestion.gastos.model.dto.CardPersonalizadoResponse;
+import com.gestion.gastos.model.dto.CategoriaPersonalizadoRequest;
+import com.gestion.gastos.model.dto.CrearCardPersonalizadoRequest;
+import com.gestion.gastos.model.dto.EditarCardPersonalizadoRequest;
+import com.gestion.gastos.model.dto.MovimientoPersonalizado;
+import com.gestion.gastos.model.dto.proyección.CardPersonalizadoResumen;
+import com.gestion.gastos.model.dto.proyección.CategoriaPersonalizadoProjection;
+import com.gestion.gastos.model.dto.proyección.MovimientoPersonalizadoView;
+import com.gestion.gastos.model.dto.proyección.ReporteMovimientoPersonalizadoView;
+import com.gestion.gastos.model.entity.CardPersonalizadoEntity;
+import com.gestion.gastos.model.entity.CategoriaPersonalizadoEntity;
+import com.gestion.gastos.model.entity.MovimientoPersonalizadoEntity;
+import com.gestion.gastos.model.entity.Usuario;
 import com.gestion.gastos.repository.CardPersonalizadoRepository;
 import com.gestion.gastos.repository.CategoriaPersonalizadoRepository;
 import com.gestion.gastos.repository.MovimientoPersonalizadoRepository;
@@ -21,39 +32,32 @@ public class GastosPersonalizadosService {
     private final CardPersonalizadoRepository cardPersonalizadoRepository;
     private final CategoriaPersonalizadoRepository categoriaPersonalizadoRepository;
     private final MovimientoPersonalizadoRepository movimientoPersonalizadoRepository;
+    private final GastoPersonalizadoRealtimeNotifier realtimeNotifier;
     private final AuthService authService;
 
     public List<CardPersonalizadoResumen> listarCardsPorUsuario() {
         Usuario usuario = authService.getUsuarioAutenticado();
-
         return cardPersonalizadoRepository.listarResumenPorUsuario(usuario.getId());
-
     }
 
     public CardPersonalizadoResponse crearGastoPersonalizado(CrearCardPersonalizadoRequest req) {
-        // normalizar
         String nombre = req.getNombre().trim();
         Usuario usuario = authService.getUsuarioAutenticado();
 
-        // unicidad por usuario
         if (cardPersonalizadoRepository.existsByUserIdAndNombreIgnoreCase(usuario.getId(), nombre)) {
             throw new IllegalArgumentException("Ya existe un card con ese nombre para el usuario.");
         }
 
-        // construir entidad
         CardPersonalizadoEntity entity = CardPersonalizadoEntity.builder()
                 .userId(usuario.getId())
                 .nombre(nombre)
                 .descripcion(req.getDescripcion())
                 .moneda(Optional.ofNullable(req.getMoneda()).orElse("PEN").toUpperCase())
                 .colorHex(Optional.ofNullable(req.getColorHex()).orElse("#6C63FF"))
-             //   .icono(Optional.ofNullable(req.getIcono()).orElse("settings"))
                 .archivado(false)
                 .build();
 
         CardPersonalizadoEntity saved = cardPersonalizadoRepository.save(entity);
-
-        // map a response
         return CardPersonalizadoResponse.builder()
                 .id(saved.getId())
                 .userId(saved.getUserId())
@@ -68,80 +72,62 @@ public class GastosPersonalizadosService {
     }
 
     public CategoriaPersonalizadoEntity crearCategoria(CategoriaPersonalizadoRequest categoria) {
-        // normalizar
-        System.out.println(categoria.getIdCard());
-        String nombre = categoria.getNombre().trim();
         Usuario usuario = authService.getUsuarioAutenticado();
-        /*
-        // unicidad por usuario
-        if (categoriaPersonalizadoRepository.existsByUserIdAndNombreIgnoreCase(usuario.getId(), nombre)) {
-            throw new IllegalArgumentException("Ya existe un card con ese nombre para el usuario.");
-        }*/
-
-        CardPersonalizadoEntity cardRef =
-                cardPersonalizadoRepository.getReferenceById(Long.valueOf(categoria.getIdCard())); // proxy, sin SELECT
+        cardPersonalizadoRepository.getReferenceById(Long.valueOf(categoria.getIdCard()));
 
         CategoriaPersonalizadoEntity entity = CategoriaPersonalizadoEntity.builder()
                 .userId(usuario.getId())
-                .cardId(Long.valueOf(categoria.getIdCard()))                              // << aquí va la referencia
+                .cardId(Long.valueOf(categoria.getIdCard()))
                 .nombre(categoria.getNombre())
                 .tipo(categoria.getTipoMovimiento())
-                .createdAt(LocalDateTime.now())            // o usa @CreationTimestamp
+                .createdAt(LocalDateTime.now())
                 .activa(true)
                 .build();
 
-        return categoriaPersonalizadoRepository.save(entity);
-
+        CategoriaPersonalizadoEntity saved = categoriaPersonalizadoRepository.save(entity);
+        realtimeNotifier.notifyChange("categoria_personalizada_creada", saved.getCardId(), usuario.getId());
+        return saved;
     }
 
     public List<CategoriaPersonalizadoProjection> listarCategoria(Integer idCard) {
         Usuario usuario = authService.getUsuarioAutenticado();
-
         return cardPersonalizadoRepository.listCategoriaPersonalizado(usuario.getId(), idCard);
     }
-    public List<CategoriaPersonalizadoProjection> listCategoriaPersonalizadoxTipo(Integer idCard,String tipo) {
-        Usuario usuario = authService.getUsuarioAutenticado();
 
-        return cardPersonalizadoRepository.listCategoriaPersonalizadoxTipo(usuario.getId(), idCard,tipo);
+    public List<CategoriaPersonalizadoProjection> listCategoriaPersonalizadoxTipo(Integer idCard, String tipo) {
+        Usuario usuario = authService.getUsuarioAutenticado();
+        return cardPersonalizadoRepository.listCategoriaPersonalizadoxTipo(usuario.getId(), idCard, tipo);
     }
 
     public CardPersonalizadoResumen CardPersonalizadosxId(Integer idCard) {
         Usuario usuario = authService.getUsuarioAutenticado();
-
-        return cardPersonalizadoRepository.CardPersonalizadosxId(Math.toIntExact(usuario.getId()),idCard);
-
+        return cardPersonalizadoRepository.CardPersonalizadosxId(Math.toIntExact(usuario.getId()), idCard);
     }
 
-
     public List<MovimientoPersonalizadoView> listMovimientoPersonalizado(Integer idCard) {
-        return  movimientoPersonalizadoRepository.listMovimientoPersonalizado(Long.valueOf(idCard));
+        return movimientoPersonalizadoRepository.listMovimientoPersonalizado(Long.valueOf(idCard));
     }
 
     public List<ReporteMovimientoPersonalizadoView> listarReporteCard(Integer idCard) {
-        return  movimientoPersonalizadoRepository.listarReporteCard(Long.valueOf(idCard));
+        return movimientoPersonalizadoRepository.listarReporteCard(Long.valueOf(idCard));
     }
 
     @Transactional
     public ApiOutResponseDto nuevoGasto(MovimientoPersonalizado dto) {
         ApiOutResponseDto out = new ApiOutResponseDto();
+        Usuario usuario = authService.getUsuarioAutenticado();
 
-        // 1) Carga la card (existe/activa)
-        CardPersonalizadoEntity cardRef = cardPersonalizadoRepository
-                .getReferenceById(dto.getIdCard());
-
-        // 2) Carga la categoría que pertenezca a esa misma card
+        CardPersonalizadoEntity cardRef = cardPersonalizadoRepository.getReferenceById(dto.getIdCard());
         CategoriaPersonalizadoEntity catRef = categoriaPersonalizadoRepository
                 .findByIdAndCardId(dto.getCategoria(), dto.getIdCard())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "La categoría " + dto.getCategoria() + " no pertenece a la card " + dto.getIdCard()
+                        "La categoria " + dto.getCategoria() + " no pertenece a la card " + dto.getIdCard()
                 ));
 
-        // 3) Mapea el enum
         var tipoEnum = CategoriaPersonalizadoEntity.TipoMovimiento.valueOf(dto.getTipo().toUpperCase());
-
         MovimientoPersonalizadoEntity entity;
+        String eventType;
 
-        // 4) Si es edición
         if (dto.getIdMovimiento() != null && dto.getIdMovimiento() > 0) {
             entity = movimientoPersonalizadoRepository.findById(dto.getIdMovimiento())
                     .orElseThrow(() -> new IllegalArgumentException("Movimiento no encontrado"));
@@ -153,13 +139,12 @@ public class GastosPersonalizadosService {
                     : new BigDecimal(dto.getMonto().toString()));
             entity.setFecha(dto.getFecha());
             entity.setNota(dto.getDescripcion());
-            entity.setUpdatedAt(LocalDateTime.now()); // <-- si usas campo updatedAt
+            entity.setUpdatedAt(LocalDateTime.now());
 
             movimientoPersonalizadoRepository.save(entity);
             out.setMsgResultado("Actualizado correctamente");
-
+            eventType = "movimiento_personalizado_editado";
         } else {
-            // 5) Nuevo movimiento
             entity = MovimientoPersonalizadoEntity.builder()
                     .card(cardRef)
                     .categoria(catRef)
@@ -175,29 +160,33 @@ public class GastosPersonalizadosService {
 
             movimientoPersonalizadoRepository.save(entity);
             out.setMsgResultado("Registrado correctamente");
+            eventType = "movimiento_personalizado_creado";
         }
 
+        realtimeNotifier.notifyChange(eventType, dto.getIdCard(), usuario.getId());
         out.setCodResultado(200);
         return out;
     }
 
-
     public void eliminarMoviento(Long id) {
+        Usuario usuario = authService.getUsuarioAutenticado();
         movimientoPersonalizadoRepository.findById(id).ifPresent(mov -> {
             mov.setActivo(false);
             movimientoPersonalizadoRepository.save(mov);
+            realtimeNotifier.notifyChange("movimiento_personalizado_eliminado", mov.getCard().getId(), usuario.getId());
         });
     }
 
     public MovimientoPersonalizadoView obtenerMovimientoPersonalizado(Long idMovimiento) {
-        return  movimientoPersonalizadoRepository.obtenerMovimientoPersonalizado(idMovimiento);
-
+        return movimientoPersonalizadoRepository.obtenerMovimientoPersonalizado(idMovimiento);
     }
 
     public void eliminarCategoria(Long id) {
-        categoriaPersonalizadoRepository.findById(id).ifPresent(mov -> {
-            mov.setActiva(false);
-            categoriaPersonalizadoRepository.save(mov);
+        Usuario usuario = authService.getUsuarioAutenticado();
+        categoriaPersonalizadoRepository.findById(id).ifPresent(cat -> {
+            cat.setActiva(false);
+            categoriaPersonalizadoRepository.save(cat);
+            realtimeNotifier.notifyChange("categoria_personalizada_eliminada", cat.getCardId(), usuario.getId());
         });
     }
 
@@ -266,6 +255,7 @@ public class GastosPersonalizadosService {
         }
 
         CardPersonalizadoEntity saved = cardPersonalizadoRepository.save(card);
+        realtimeNotifier.notifyChange("gasto_personalizado_editado", saved.getId(), usuario.getId());
         CardPersonalizadoResponse response = CardPersonalizadoResponse.builder()
                 .id(saved.getId())
                 .userId(saved.getUserId())
@@ -316,6 +306,7 @@ public class GastosPersonalizadosService {
 
         card.setArchivado(true);
         cardPersonalizadoRepository.save(card);
+        realtimeNotifier.notifyChange("gasto_personalizado_eliminado", card.getId(), usuario.getId());
 
         out.setCodResultado(1);
         out.setMsgResultado("Card archivada correctamente");

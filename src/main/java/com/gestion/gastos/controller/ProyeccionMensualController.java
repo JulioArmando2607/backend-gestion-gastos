@@ -17,6 +17,11 @@ import java.util.List;
 public class ProyeccionMensualController {
     private final ProyeccionMensualService service;
 
+    @GetMapping("/mis-proyecciones")
+    public ResponseEntity<List<?>> listarMisProyecciones() {
+        return ResponseEntity.ok(service.listarMisProyecciones());
+    }
+
     @GetMapping("/categorias/{usuarioId}/{anio}/{mes}")
     public ResponseEntity<List<CategoriasProyeccionProjection>> listarCategorias(
             @PathVariable Integer usuarioId,

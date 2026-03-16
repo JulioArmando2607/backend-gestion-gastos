@@ -18,6 +18,9 @@ import com.gestion.gastos.repository.ProyeccionMensualRepository;
 import com.gestion.gastos.repository.UsuarioRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -56,7 +59,8 @@ public class CompartirProyeccionService {
             return build(COD_VALIDACION, "idProyeccion es obligatorio", null, 0);
         }
 
-        Optional<Personas> personaAccionOpt = personaRepository.findByUsuarioId(req.getUsuarioIdAccion());
+        Integer usuarioAutenticadoId = obtenerUsuarioAutenticadoId();
+        Optional<Personas> personaAccionOpt = personaRepository.findByUsuarioId(usuarioAutenticadoId);
         if (personaAccionOpt.isEmpty()) {
             return build(COD_NO_ENCONTRADO, "El usuario que comparte no tiene perfil de persona", null, 0);
         }
@@ -67,7 +71,7 @@ public class CompartirProyeccionService {
         }
 
         Integer usuarioDestinoId = Math.toIntExact(usuarioDestinoOpt.get().getId());
-        if (usuarioDestinoId.equals(req.getUsuarioIdAccion())) {
+        if (usuarioDestinoId.equals(usuarioAutenticadoId)) {
             return build(COD_VALIDACION, "No puedes compartir una proyeccion a tu propio correo", null, 0);
         }
 
@@ -80,7 +84,7 @@ public class CompartirProyeccionService {
         Personas personaDestino = personaDestinoOpt.get();
 
         boolean proyeccionDelUsuario = proyeccionMensualRepository
-                .existsByIdAndUsuarioId(req.getIdProyeccion(), req.getUsuarioIdAccion());
+                .existsByIdAndUsuarioId(req.getIdProyeccion(), usuarioAutenticadoId);
         if (!proyeccionDelUsuario) {
             return build(COD_NO_ENCONTRADO, "La proyeccion no existe o no pertenece al usuario que comparte", null, 0);
         }
@@ -114,16 +118,22 @@ public class CompartirProyeccionService {
         if (idPersona == null) {
             return build(COD_VALIDACION, "idPersona es obligatorio", List.of(), 0);
         }
+        if (!obtenerUsuarioAutenticadoId().equals(idPersona)) {
+            return build(COD_VALIDACION, "No tienes permiso para ver comparticiones de otro usuario", List.of(), 0);
+        }
 
         List<CompartirEnviadaProjection> data = compartirProyeccionRepository.listarRecibidos(idPersona);
         return build(COD_OK, "Listado de proyecciones recibidas", data, data.size());
     }
 
-    public ApiOutResponseDto listarEnviadas(Integer idPersona) {
+    public ApiOutResponseDto listarEnviadas(Integer idPersona,Integer idProyeccion) {
         if (idPersona == null) {
             return build(COD_VALIDACION, "idPersona es obligatorio", List.of(), 0);
         }
-        List<CompartirEnviadaProjection> data = compartirProyeccionRepository.listarEnviadasDetalle(idPersona);
+        if (!obtenerUsuarioAutenticadoId().equals(idPersona)) {
+            return build(COD_VALIDACION, "No tienes permiso para ver comparticiones de otro usuario", List.of(), 0);
+        }
+        List<CompartirEnviadaProjection> data = compartirProyeccionRepository.listarEnviadasDetalle(idPersona, idProyeccion);
         return build(COD_OK, "Listado de proyecciones enviadas", data, data.size());
     }
 
@@ -132,9 +142,19 @@ public class CompartirProyeccionService {
         if (idCompartirProyeccion == null) {
             return build(COD_VALIDACION, "id es obligatorio", null, 0);
         }
+        Optional<Personas> personaOpt = personaRepository.findByUsuarioId(obtenerUsuarioAutenticadoId());
+        if (personaOpt.isEmpty()) {
+            return build(COD_NO_ENCONTRADO, "El usuario autenticado no tiene perfil de persona", null, 0);
+        }
         Optional<CompartirProyeccion> registroOpt = compartirProyeccionRepository.findById(idCompartirProyeccion);
         if (registroOpt.isEmpty()) {
             return build(COD_NO_ENCONTRADO, "No existe el registro de comparticion", null, 0);
+        }
+        if (!compartirProyeccionRepository.existsByIdAndIdPersonaCompartioAndActivoTrue(
+                idCompartirProyeccion,
+                personaOpt.get().getId()
+        )) {
+            return build(COD_VALIDACION, "No tienes permiso para desactivar esta comparticion", null, 0);
         }
 
         try {
@@ -159,6 +179,14 @@ public class CompartirProyeccionService {
     public ApiOutResponseDto verProyeccion(Integer idProyeccion) {
         ApiOutResponseDto apiOutResponseDto = new ApiOutResponseDto();
 
+        if (!tieneAccesoProyeccion(idProyeccion)) {
+            apiOutResponseDto.setCodResultado(COD_VALIDACION);
+            apiOutResponseDto.setMsgResultado("No tienes permiso para ver esta proyeccion");
+            apiOutResponseDto.setTotal(0);
+            apiOutResponseDto.setResponse(null);
+            return apiOutResponseDto;
+        }
+
         Optional<ProyeccionMensual> proyeccionOpt = proyeccionMensualRepository.findById(idProyeccion);
 
         if (proyeccionOpt.isPresent()) {
@@ -177,6 +205,10 @@ public class CompartirProyeccionService {
     }
 
     public ApiOutResponseDto detalleProyeccion(Integer idProyeccion) {
+        if (!tieneAccesoProyeccion(idProyeccion)) {
+            return build(COD_VALIDACION, "No tienes permiso para ver esta proyeccion", List.of(), 0);
+        }
+
         List<DetalleProyeccionView> detalle = detalleRepository.findDetalleViewByProyeccionId(idProyeccion);
 
         if (!detalle.isEmpty()) {
@@ -216,11 +248,12 @@ public class CompartirProyeccionService {
             return build(COD_VALIDACION, "La proyeccion esta cerrada y no se puede editar", null, 0);
         }
 
-        boolean esPropietario = proyeccion.getUsuarioId().equals(req.getUsuarioIdAccion());
+        Integer usuarioAutenticadoId = obtenerUsuarioAutenticadoId();
+        boolean esPropietario = proyeccion.getUsuarioId().equals(usuarioAutenticadoId);
         boolean tieneAccesoCompartido = false;
 
         if (!esPropietario) {
-            Optional<Personas> personaOpt = personaRepository.findByUsuarioId(req.getUsuarioIdAccion());
+            Optional<Personas> personaOpt = personaRepository.findByUsuarioId(usuarioAutenticadoId);
             if (personaOpt.isPresent()) {
                 tieneAccesoCompartido = compartirProyeccionRepository
                         .existsByIdPersonaCompartidaAndIdProyeccionAndActivoTrue(
@@ -273,5 +306,34 @@ public class CompartirProyeccionService {
         } catch (Exception e) {
             return build(COD_ERROR, "Error al actualizar monto de categoria: " + e.getMessage(), null, 0);
         }
+    }
+
+    private boolean tieneAccesoProyeccion(Integer idProyeccion) {
+        Optional<ProyeccionMensual> proyeccionOpt = proyeccionMensualRepository.findById(idProyeccion);
+        if (proyeccionOpt.isEmpty()) {
+            return false;
+        }
+
+        Integer usuarioAutenticadoId = obtenerUsuarioAutenticadoId();
+        ProyeccionMensual proyeccion = proyeccionOpt.get();
+        if (proyeccion.getUsuarioId().equals(usuarioAutenticadoId)) {
+            return true;
+        }
+
+        return personaRepository.findByUsuarioId(usuarioAutenticadoId)
+                .map(persona -> compartirProyeccionRepository
+                        .existsByIdPersonaCompartidaAndIdProyeccionAndActivoTrue(persona.getId(), idProyeccion))
+                .orElse(false);
+    }
+
+    private Integer obtenerUsuarioAutenticadoId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new AccessDeniedException("Usuario no autenticado");
+        }
+
+        return usuarioRepository.findByEmail(authentication.getName())
+                .map(usuario -> Math.toIntExact(usuario.getId()))
+                .orElseThrow(() -> new AccessDeniedException("Usuario autenticado no encontrado"));
     }
 }

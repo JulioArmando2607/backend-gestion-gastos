@@ -21,15 +21,24 @@ public interface CompartirProyeccionRepository extends JpaRepository<CompartirPr
             Integer idProyeccion
     );
 
+    boolean existsByIdAndIdPersonaCompartioAndActivoTrue(
+            Integer id,
+            Integer idPersonaCompartio
+    );
+
     @Query(value = """
             SELECT
                 cp.id AS idCompartir,
                 cp.id_proyeccion AS idProyeccion,
+                pm.usuario_id AS ownerUserId,
                 cp.id_persona_compartida AS idPersonaCompartida,
                 u.nombre AS nombrePersonaCompartida,
                 u.email AS correoPersonaCompartida,
+                pm.anio AS anio,
+                pm.mes AS mes,
                 cp.fecha_reg AS fechaCompartido
             FROM compartir_proyeccion cp
+            INNER JOIN proyeccion_mensual pm ON pm.id = cp.id_proyeccion
             INNER JOIN personas p ON p.id = cp.id_persona_compartio
             INNER JOIN usuarios u ON u.id = p.usuario_id
             
@@ -48,20 +57,25 @@ public interface CompartirProyeccionRepository extends JpaRepository<CompartirPr
             SELECT
                 cp.id AS idCompartir,
                 cp.id_proyeccion AS idProyeccion,
+                pm.usuario_id AS ownerUserId,
                 cp.id_persona_compartida AS idPersonaCompartida,
                 uido.nombre AS nombrePersonaCompartida,
                 uido.email AS correoPersonaCompartida,
+                pm.anio AS anio,
+                pm.mes AS mes,
                 cp.fecha_reg AS fechaCompartido
             FROM compartir_proyeccion cp
+            INNER JOIN proyeccion_mensual pm ON pm.id = cp.id_proyeccion
             INNER JOIN personas p ON p.id = cp.id_persona_compartio
             INNER JOIN usuarios u ON u.id = p.usuario_id
             
             INNER JOIN personas pido ON pido.id = cp.id_persona_compartida
             INNER JOIN usuarios uido ON uido.id = pido.usuario_id
             
-            WHERE u.id = :idPersona
+            WHERE u.id = :idPersona and cp.id_proyeccion = :idProyeccion
               AND cp.activo = 1
             ORDER BY cp.id DESC
             """, nativeQuery = true)
-    List<CompartirEnviadaProjection> listarEnviadasDetalle(@Param("idPersona") Integer idPersona);
+    List<CompartirEnviadaProjection> listarEnviadasDetalle(@Param("idPersona") Integer idPersona,
+                                                           @Param("idProyeccion") Integer idProyeccion);
 }

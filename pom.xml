@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
@@ -12,7 +12,7 @@
 	<artifactId>gestion-gastos</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>gestion-gastos</name>
-	<description>App para gestión de ingresos y gastos</description>
+	<description>App para gestiÃ³n de ingresos y gastos</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -67,7 +67,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.30</version> <!-- o la última estable -->
+			<version>1.18.30</version> <!-- o la Ãºltima estable -->
 			<scope>provided</scope>
 		</dependency>
 
@@ -90,6 +90,11 @@
 		</dependency>
 
 
+			<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -102,3 +107,4 @@
 	</build>
 
 </project>
+

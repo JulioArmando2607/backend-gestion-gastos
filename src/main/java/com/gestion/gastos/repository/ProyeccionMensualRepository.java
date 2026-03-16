@@ -5,11 +5,13 @@ import com.gestion.gastos.model.entity.ProyeccionMensual;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ProyeccionMensualRepository extends JpaRepository<ProyeccionMensual, Integer> {
     Optional<ProyeccionMensual> findByUsuarioIdAndAnioAndMes(Integer usuarioId, Integer anio, Integer mes);
+    List<ProyeccionMensual> findByUsuarioIdOrderByAnioDescMesDesc(Integer usuarioId);
     boolean existsByUsuarioIdAndAnioAndMes(Integer usuarioId, Integer anio, Integer mes);
     boolean existsByIdAndUsuarioId(Integer id, Integer usuarioId);
 }
