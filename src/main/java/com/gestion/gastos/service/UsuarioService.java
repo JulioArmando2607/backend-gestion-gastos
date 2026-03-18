@@ -25,8 +25,28 @@ public class UsuarioService {
 
     public Usuario guardar(Usuario usuario) {
         usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+        Usuario usuarioGuardado = usuarioRepository.save(usuario);
 
-        return usuarioRepository.save(usuario);
+        Personas nuevaPersona = Personas.builder()
+                .activo(true)
+                .fechaReg(LocalDateTime.now())
+                .usuarioId(Math.toIntExact(usuarioGuardado.getId()))
+                .build();
+
+        personaRepository.save(nuevaPersona);
+        return usuarioGuardado;
+        /*  int id = usuarioRepository.save(usuario);
+        Personas guardada;
+
+
+            Personas nueva = Personas.builder()
+
+                    .activo(true)
+                    .fechaReg(LocalDateTime.now())
+                    .usuarioId(id)
+                    .build();
+            guardada = personaRepository.save(nueva);
+        return usuarioRepository.save(usuario);*/
     }
 
     public List<Usuario> listarTodos() {
