@@ -9,12 +9,10 @@ import com.gestion.gastos.model.entity.ProyeccionMensual;
 import com.gestion.gastos.repository.CategoriaProyeccionRepository;
 import com.gestion.gastos.repository.DetalleProyeccionRepository;
 import com.gestion.gastos.repository.ProyeccionMensualRepository;
-import com.gestion.gastos.repository.UsuarioRepository;
+import com.gestion.gastos.security.UsuarioAutenticadoService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -30,7 +28,7 @@ public class ProyeccionMensualService {
     private final ProyeccionMensualRepository proyeccionRepository;
     private final CategoriaProyeccionRepository categoriaRepository;
     private final DetalleProyeccionRepository detalleRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
     ///private final ProyeccionCustomRepository proyeccionCustomRepository;
     public List<CategoriasProyeccionProjection> listarCategoriasProyeccion(
             Integer usuarioId,
@@ -353,13 +351,6 @@ public class ProyeccionMensualService {
     }
 
     private Integer obtenerUsuarioAutenticadoId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getName() == null) {
-            throw new AccessDeniedException("Usuario no autenticado");
-        }
-
-        return usuarioRepository.findByEmail(authentication.getName())
-                .map(usuario -> Math.toIntExact(usuario.getId()))
-                .orElseThrow(() -> new AccessDeniedException("Usuario autenticado no encontrado"));
+        return usuarioAutenticadoService.obtenerUsuarioIdComoInteger();
     }
 }

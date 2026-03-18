@@ -19,6 +19,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -203,7 +204,7 @@ public class CompartirGastoPersonalizadoService {
         out.setCodResultado(cod);
         out.setMsgResultado(msg);
         out.setResponse(data);
-        out.setTotal(total);
+        out.setTotal(BigDecimal.valueOf(total));
         return out;
     }
 

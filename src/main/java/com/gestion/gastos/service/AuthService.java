@@ -4,11 +4,9 @@ import com.gestion.gastos.model.dto.LoginRequest;
 import com.gestion.gastos.model.entity.Usuario;
 import com.gestion.gastos.repository.UsuarioRepository;
 import com.gestion.gastos.security.JwtService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.gestion.gastos.security.UsuarioAutenticadoService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
@@ -20,15 +18,18 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UsuarioRepository usuarioRepository;
     private final JwtService jwtService;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
     public AuthService(
             AuthenticationManager authenticationManager,
             UsuarioRepository usuarioRepository,
-            JwtService jwtService
+            JwtService jwtService,
+            UsuarioAutenticadoService usuarioAutenticadoService
     ) {
         this.authenticationManager = authenticationManager;
         this.usuarioRepository = usuarioRepository;
         this.jwtService = jwtService;
+        this.usuarioAutenticadoService = usuarioAutenticadoService;
     }
 
     public String login(LoginRequest request) {
@@ -41,9 +42,8 @@ public class AuthService {
 
         return jwtService.generateToken(usuario);
     }
+
     public Usuario getUsuarioAutenticado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        return usuarioAutenticadoService.obtenerUsuario();
     }
 }

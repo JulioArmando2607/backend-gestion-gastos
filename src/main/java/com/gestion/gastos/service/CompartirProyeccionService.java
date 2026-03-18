@@ -16,11 +16,9 @@ import com.gestion.gastos.repository.DetalleProyeccionRepository;
 import com.gestion.gastos.repository.PersonaRepository;
 import com.gestion.gastos.repository.ProyeccionMensualRepository;
 import com.gestion.gastos.repository.UsuarioRepository;
+import com.gestion.gastos.security.UsuarioAutenticadoService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -43,14 +41,12 @@ public class CompartirProyeccionService {
     private final PersonaRepository personaRepository;
     private final UsuarioRepository usuarioRepository;
     private final DetalleProyeccionRepository detalleRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
     @Transactional
     public ApiOutResponseDto compartir(CompartirProyeccionRequest req) {
         if (req == null) {
             return build(COD_VALIDACION, "Request es obligatorio", null, 0);
-        }
-        if (req.getUsuarioIdAccion() == null) {
-            return build(COD_VALIDACION, "usuarioIdAccion es obligatorio", null, 0);
         }
         if (req.getCorreoDestinatario() == null || req.getCorreoDestinatario().isBlank()) {
             return build(COD_VALIDACION, "correoDestinatario es obligatorio", null, 0);
@@ -172,7 +168,7 @@ public class CompartirProyeccionService {
         out.setCodResultado(cod);
         out.setMsgResultado(msg);
         out.setResponse(data);
-        out.setTotal(total);
+        out.setTotal(BigDecimal.valueOf(total));
         return out;
     }
 
@@ -182,7 +178,7 @@ public class CompartirProyeccionService {
         if (!tieneAccesoProyeccion(idProyeccion)) {
             apiOutResponseDto.setCodResultado(COD_VALIDACION);
             apiOutResponseDto.setMsgResultado("No tienes permiso para ver esta proyeccion");
-            apiOutResponseDto.setTotal(0);
+            apiOutResponseDto.setTotal(BigDecimal.valueOf(0));
             apiOutResponseDto.setResponse(null);
             return apiOutResponseDto;
         }
@@ -192,12 +188,12 @@ public class CompartirProyeccionService {
         if (proyeccionOpt.isPresent()) {
             apiOutResponseDto.setCodResultado(COD_OK);
             apiOutResponseDto.setMsgResultado("Proyeccion encontrada");
-            apiOutResponseDto.setTotal(1);
+            apiOutResponseDto.setTotal(BigDecimal.valueOf(1));
             apiOutResponseDto.setResponse(proyeccionOpt.get());
         } else {
             apiOutResponseDto.setCodResultado(COD_NO_ENCONTRADO);
             apiOutResponseDto.setMsgResultado("No existe la proyeccion");
-            apiOutResponseDto.setTotal(0);
+            apiOutResponseDto.setTotal(BigDecimal.valueOf(0));
             apiOutResponseDto.setResponse(null);
         }
 
@@ -221,9 +217,6 @@ public class CompartirProyeccionService {
     public ApiOutResponseDto editarMontoCategoria(EditarMontoCategoriaCompartidaRequest req) {
         if (req == null) {
             return build(COD_VALIDACION, "Request es obligatorio", null, 0);
-        }
-        if (req.getUsuarioIdAccion() == null) {
-            return build(COD_VALIDACION, "usuarioIdAccion es obligatorio", null, 0);
         }
         if (req.getIdProyeccion() == null) {
             return build(COD_VALIDACION, "idProyeccion es obligatorio", null, 0);
@@ -327,13 +320,6 @@ public class CompartirProyeccionService {
     }
 
     private Integer obtenerUsuarioAutenticadoId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getName() == null) {
-            throw new AccessDeniedException("Usuario no autenticado");
-        }
-
-        return usuarioRepository.findByEmail(authentication.getName())
-                .map(usuario -> Math.toIntExact(usuario.getId()))
-                .orElseThrow(() -> new AccessDeniedException("Usuario autenticado no encontrado"));
+        return usuarioAutenticadoService.obtenerUsuarioIdComoInteger();
     }
 }
