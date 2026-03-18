@@ -14,14 +14,25 @@ public interface CategoriaProyeccionRepository extends JpaRepository<CategoriaPr
     List<CategoriaProyeccion> findByUsuarioIdAndActivaTrueOrderByOrden(Integer usuarioId);
     boolean existsByUsuarioId(Integer usuarioId);
 
-    // ⭐ QUERY PERSONALIZADA CON LEFT JOIN
+    // ⭐ QUERY PERSONALIZADA CON LEFT JOIN             COALESCE(d.monto_proyectado, 0) as montoCategoria,
     @Query(value = """
         SELECT 
             COALESCE(pm.id, 0) as proyeccionId,
             c.id as categoriaId,
             c.nombre as nombreCategoria,
             c.color as colorCategoria,
-            COALESCE(d.monto_proyectado, 0) as montoCategoria,
+            COALESCE(
+                								d.monto_proyectado,
+                								(
+                										SELECT dpi.monto_proyectado
+                										FROM detalle_proyeccion dpi
+                										WHERE dpi.id_categoria = c.id
+                											AND dpi.activo = 1
+                										ORDER BY dpi.id_proyeccion DESC
+                										LIMIT 1
+                								),
+                								0
+                						) AS montoCategoria,
             c.orden as ordenCategoria,
             COALESCE(pm.anio, :anio) as anio,
             COALESCE(pm.mes, :mes) as mes,
