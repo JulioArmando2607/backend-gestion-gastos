@@ -40,7 +40,7 @@ public class ProyeccionMensualService {
 
         // Verificar si el usuario tiene categorías, si no, crear las predeterminadas
         if (!categoriaRepository.existsByUsuarioId(usuarioId)) {
-            crearCategoriasPredeterminadas(usuarioId);
+          //  crearCategoriasPredeterminadas(usuarioId);
         }
 
         // ⭐ Ahora usamos el método directo del repositorio
