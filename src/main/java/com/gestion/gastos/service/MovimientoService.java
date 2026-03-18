@@ -38,7 +38,7 @@ public class MovimientoService {
 
     public List<Movimiento> listarPorUsuario() {
         Usuario usuario = authService.getUsuarioAutenticado();
-        return movimientoRepository.findByUsuarioIdAndActivoTrueOrderByFechaDesc(usuario.getId());
+        return movimientoRepository.findByUsuarioIdAndActivoTrueOrderByFechaDescFechaRegDesc(usuario.getId());
     }
 
     public void eliminar(Long id) {

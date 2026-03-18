@@ -19,7 +19,8 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
     List<Movimiento> findByActivoTrue();
 
     List<Movimiento> findByUsuarioIdAndActivoTrueOrderByIdDesc(Long usuarioId);
-    List<Movimiento> findByUsuarioIdAndActivoTrueOrderByFechaDesc(Long usuarioId);
+    List<Movimiento> findByUsuarioIdAndActivoTrueOrderByFechaDescAndFechaRegDesc(Long usuarioId);
+    List<Movimiento> findByUsuarioIdAndActivoTrueOrderByFechaDescFechaRegDesc(Long usuarioId);
 
     @Query(value = """
         SELECT
