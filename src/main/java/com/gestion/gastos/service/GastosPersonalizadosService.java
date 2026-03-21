@@ -111,11 +111,10 @@ public class GastosPersonalizadosService {
         if (!canEditCard(Long.valueOf(categoria.getIdCard()))) {
             throw new IllegalArgumentException("No tienes permiso para editar esta cuenta");
         }
-        Usuario usuario = authService.getUsuarioAutenticado();
-        cardPersonalizadoRepository.getReferenceById(Long.valueOf(categoria.getIdCard()));
+        CardPersonalizadoEntity cardRef = cardPersonalizadoRepository.getReferenceById(Long.valueOf(categoria.getIdCard()));
 
         CategoriaPersonalizadoEntity entity = CategoriaPersonalizadoEntity.builder()
-                .userId(usuario.getId())
+                .userId(cardRef.getUserId())
                 .cardId(Long.valueOf(categoria.getIdCard()))
                 .nombre(categoria.getNombre())
                 .tipo(categoria.getTipoMovimiento())
@@ -124,6 +123,7 @@ public class GastosPersonalizadosService {
                 .build();
 
         CategoriaPersonalizadoEntity saved = categoriaPersonalizadoRepository.save(entity);
+        Usuario usuario = authService.getUsuarioAutenticado();
         realtimeNotifier.notifyChange("categoria_personalizada_creada", saved.getCardId(), usuario.getId());
         return saved;
     }
@@ -132,16 +132,14 @@ public class GastosPersonalizadosService {
         if (!canViewCard(Long.valueOf(idCard))) {
             return List.of();
         }
-        Usuario usuario = authService.getUsuarioAutenticado();
-        return cardPersonalizadoRepository.listCategoriaPersonalizado(usuario.getId(), idCard);
+        return cardPersonalizadoRepository.listCategoriaPersonalizado(idCard);
     }
 
     public List<CategoriaPersonalizadoProjection> listCategoriaPersonalizadoxTipo(Integer idCard, String tipo) {
         if (!canViewCard(Long.valueOf(idCard))) {
             return List.of();
         }
-        Usuario usuario = authService.getUsuarioAutenticado();
-        return cardPersonalizadoRepository.listCategoriaPersonalizadoxTipo(usuario.getId(), idCard, tipo);
+        return cardPersonalizadoRepository.listCategoriaPersonalizadoxTipo(idCard, tipo);
     }
 
     public CardPersonalizadoResumen CardPersonalizadosxId(Integer idCard) {

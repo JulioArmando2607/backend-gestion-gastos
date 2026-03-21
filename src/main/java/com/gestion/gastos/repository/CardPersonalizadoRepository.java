@@ -32,7 +32,7 @@ public interface CardPersonalizadoRepository extends JpaRepository<CardPersonali
       WHERE cp.user_id = :userId
         AND cp.archivado = 0
       GROUP BY cp.id, cp.nombre, cp.color_hex
-      ORDER BY cp.created_at DESC
+      ORDER BY cp.id DESC
       """, nativeQuery = true)
     List<CardPersonalizadoResumen> listarResumenPorUsuario(@Param("userId") Long userId);
 
@@ -42,16 +42,15 @@ public interface CardPersonalizadoRepository extends JpaRepository<CardPersonali
     Optional<CardPersonalizadoEntity> findById(Long id);
 
     @Query(value = """
-      SELECT id,nombre from categorias_personalizado where activa = 1 and user_id = :userId and card_id = :idCard
+      SELECT id,nombre from categorias_personalizado where activa = 1 and card_id = :idCard
       """, nativeQuery = true)
-    List<CategoriaPersonalizadoProjection> listCategoriaPersonalizado(@Param("userId") Long userId, @Param("idCard") int idCard);
+    List<CategoriaPersonalizadoProjection> listCategoriaPersonalizado(@Param("idCard") int idCard);
 
 
     @Query(value = """
-      SELECT id,nombre from categorias_personalizado where activa = 1 and user_id = :userId and card_id = :idCard and tipo=:tipo
+      SELECT id,nombre from categorias_personalizado where activa = 1 and card_id = :idCard and tipo=:tipo
       """, nativeQuery = true)
-    List<CategoriaPersonalizadoProjection> listCategoriaPersonalizadoxTipo(@Param("userId") Long userId,
-                                                                           @Param("idCard") int idCard,
+    List<CategoriaPersonalizadoProjection> listCategoriaPersonalizadoxTipo(@Param("idCard") int idCard,
                                                                            @Param("tipo") String tipo
     );
 
