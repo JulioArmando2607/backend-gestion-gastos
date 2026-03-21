@@ -27,6 +27,20 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
     );
 
     @Query(value = """
+            SELECT COUNT(*)
+            FROM compartir_gasto_personalizado cgp
+            WHERE cgp.id_persona_compartida = :idPersonaCompartida
+              AND cgp.gasto_personalizado = :gastoPersonalizadoId
+              AND cgp.activo = 1
+              AND (cgp.permiso IS NULL OR UPPER(cgp.permiso) = UPPER(:permiso))
+            """, nativeQuery = true)
+    long countAccessByPermiso(
+            @Param("idPersonaCompartida") Integer idPersonaCompartida,
+            @Param("gastoPersonalizadoId") Long gastoPersonalizadoId,
+            @Param("permiso") String permiso
+    );
+
+    @Query(value = """
             SELECT DISTINCT u.id
             FROM compartir_gasto_personalizado cgp
             INNER JOIN personas p ON p.id = cgp.id_persona_compartida
@@ -54,6 +68,7 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
                 END), 0) AS saldo,
                 u.nombre AS nombreRelacionada,
                 u.email AS correoRelacionada,
+                COALESCE(cgp.permiso, 'EDITAR') AS permiso,
                 cgp.fecha_reg AS fechaCompartido
             FROM compartir_gasto_personalizado cgp
             INNER JOIN cards_personalizado cp ON cp.id = cgp.gasto_personalizado
@@ -65,7 +80,7 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
             WHERE ud.id = :idUsuario
               AND cgp.activo = 1
             GROUP BY cgp.id, cgp.gasto_personalizado, cp.user_id, cgp.id_persona_compartida,
-                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, u.nombre, u.email, cgp.fecha_reg
+                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, u.nombre, u.email, cgp.permiso, cgp.fecha_reg
             ORDER BY cgp.id DESC
             """, nativeQuery = true)
     List<CompartirGastoPersonalizadoProjection> listarRecibidos(@Param("idUsuario") Integer idUsuario);
@@ -88,6 +103,7 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
                 END), 0) AS saldo,
                 ud.nombre AS nombreRelacionada,
                 ud.email AS correoRelacionada,
+                COALESCE(cgp.permiso, 'EDITAR') AS permiso,
                 cgp.fecha_reg AS fechaCompartido
             FROM compartir_gasto_personalizado cgp
             INNER JOIN cards_personalizado cp ON cp.id = cgp.gasto_personalizado
@@ -99,7 +115,7 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
             WHERE u.id = :idUsuario
               AND cgp.activo = 1
             GROUP BY cgp.id, cgp.gasto_personalizado, cp.user_id, cgp.id_persona_compartida,
-                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, ud.nombre, ud.email, cgp.fecha_reg
+                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, ud.nombre, ud.email, cgp.permiso, cgp.fecha_reg
             ORDER BY cgp.id DESC
             """, nativeQuery = true)
     List<CompartirGastoPersonalizadoProjection> listarEnviados(@Param("idUsuario") Integer idUsuario);

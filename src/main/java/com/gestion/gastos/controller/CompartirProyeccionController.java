@@ -1,6 +1,7 @@
 package com.gestion.gastos.controller;
 
 import com.gestion.gastos.model.dto.ApiOutResponseDto;
+import com.gestion.gastos.model.dto.ActualizarPermisoCompartidoRequest;
 import com.gestion.gastos.model.dto.CompartirProyeccionRequest;
 import com.gestion.gastos.model.dto.EditarMontoCategoriaCompartidaRequest;
 import com.gestion.gastos.service.CompartirProyeccionService;
@@ -34,6 +35,14 @@ public class CompartirProyeccionController {
     @PutMapping("/{id}/desactivar")
     public ResponseEntity<ApiOutResponseDto> desactivar(@PathVariable Integer id) {
         return ResponseEntity.ok(compartirProyeccionService.desactivar(id));
+    }
+
+    @PutMapping("/{id}/permiso")
+    public ResponseEntity<ApiOutResponseDto> actualizarPermiso(
+            @PathVariable Integer id,
+            @RequestBody ActualizarPermisoCompartidoRequest request
+    ) {
+        return ResponseEntity.ok(compartirProyeccionService.actualizarPermiso(id, request));
     }
 
     @GetMapping("/ver-proyeccion/{idProyeccion}")

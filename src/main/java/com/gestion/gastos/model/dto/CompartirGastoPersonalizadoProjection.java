@@ -16,5 +16,6 @@ public interface CompartirGastoPersonalizadoProjection {
     java.math.BigDecimal getSaldo();
     String getNombreRelacionada();
     String getCorreoRelacionada();
+    String getPermiso();
     LocalDateTime getFechaCompartido();
 }

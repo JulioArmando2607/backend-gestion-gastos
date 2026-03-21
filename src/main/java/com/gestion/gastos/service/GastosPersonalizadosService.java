@@ -15,8 +15,10 @@ import com.gestion.gastos.model.entity.CategoriaPersonalizadoEntity;
 import com.gestion.gastos.model.entity.MovimientoPersonalizadoEntity;
 import com.gestion.gastos.model.entity.Usuario;
 import com.gestion.gastos.repository.CardPersonalizadoRepository;
+import com.gestion.gastos.repository.CompartirGastoPersonalizadoRepository;
 import com.gestion.gastos.repository.CategoriaPersonalizadoRepository;
 import com.gestion.gastos.repository.MovimientoPersonalizadoRepository;
+import com.gestion.gastos.repository.PersonaRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,8 @@ public class GastosPersonalizadosService {
     private final CardPersonalizadoRepository cardPersonalizadoRepository;
     private final CategoriaPersonalizadoRepository categoriaPersonalizadoRepository;
     private final MovimientoPersonalizadoRepository movimientoPersonalizadoRepository;
+    private final CompartirGastoPersonalizadoRepository compartirGastoPersonalizadoRepository;
+    private final PersonaRepository personaRepository;
     private final GastoPersonalizadoRealtimeNotifier realtimeNotifier;
     private final AuthService authService;
 
@@ -58,6 +62,7 @@ public class GastosPersonalizadosService {
                 .build();
 
         CardPersonalizadoEntity saved = cardPersonalizadoRepository.save(entity);
+        _crearCategoriasIniciales(saved, usuario);
         return CardPersonalizadoResponse.builder()
                 .id(saved.getId())
                 .userId(saved.getUserId())
@@ -71,7 +76,41 @@ public class GastosPersonalizadosService {
                 .build();
     }
 
+    private void _crearCategoriasIniciales(CardPersonalizadoEntity card, Usuario usuario) {
+        final List<CategoriaPersonalizadoEntity> categorias = List.of(
+                _nuevaCategoriaBase(card, usuario, "Comida", "GASTO", 1),
+                _nuevaCategoriaBase(card, usuario, "Transporte", "GASTO", 2),
+                _nuevaCategoriaBase(card, usuario, "Casa", "GASTO", 3),
+                _nuevaCategoriaBase(card, usuario, "Salud", "GASTO", 4),
+                _nuevaCategoriaBase(card, usuario, "Otros gastos", "GASTO", 5),
+                _nuevaCategoriaBase(card, usuario, "Sueldo", "INGRESO", 6),
+                _nuevaCategoriaBase(card, usuario, "Ingreso extra", "INGRESO", 7)
+        );
+        categoriaPersonalizadoRepository.saveAll(categorias);
+    }
+
+    private CategoriaPersonalizadoEntity _nuevaCategoriaBase(
+            CardPersonalizadoEntity card,
+            Usuario usuario,
+            String nombre,
+            String tipo,
+            int orden
+    ) {
+        return CategoriaPersonalizadoEntity.builder()
+                .userId(usuario.getId())
+                .cardId(card.getId())
+                .nombre(nombre)
+                .tipo(tipo)
+                .orden(orden)
+                .activa(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
     public CategoriaPersonalizadoEntity crearCategoria(CategoriaPersonalizadoRequest categoria) {
+        if (!canEditCard(Long.valueOf(categoria.getIdCard()))) {
+            throw new IllegalArgumentException("No tienes permiso para editar esta cuenta");
+        }
         Usuario usuario = authService.getUsuarioAutenticado();
         cardPersonalizadoRepository.getReferenceById(Long.valueOf(categoria.getIdCard()));
 
@@ -90,25 +129,40 @@ public class GastosPersonalizadosService {
     }
 
     public List<CategoriaPersonalizadoProjection> listarCategoria(Integer idCard) {
+        if (!canViewCard(Long.valueOf(idCard))) {
+            return List.of();
+        }
         Usuario usuario = authService.getUsuarioAutenticado();
         return cardPersonalizadoRepository.listCategoriaPersonalizado(usuario.getId(), idCard);
     }
 
     public List<CategoriaPersonalizadoProjection> listCategoriaPersonalizadoxTipo(Integer idCard, String tipo) {
+        if (!canViewCard(Long.valueOf(idCard))) {
+            return List.of();
+        }
         Usuario usuario = authService.getUsuarioAutenticado();
         return cardPersonalizadoRepository.listCategoriaPersonalizadoxTipo(usuario.getId(), idCard, tipo);
     }
 
     public CardPersonalizadoResumen CardPersonalizadosxId(Integer idCard) {
+        if (!canViewCard(Long.valueOf(idCard))) {
+            return null;
+        }
         Usuario usuario = authService.getUsuarioAutenticado();
         return cardPersonalizadoRepository.CardPersonalizadosxId(Math.toIntExact(usuario.getId()), idCard);
     }
 
     public List<MovimientoPersonalizadoView> listMovimientoPersonalizado(Integer idCard) {
+        if (!canViewCard(Long.valueOf(idCard))) {
+            return List.of();
+        }
         return movimientoPersonalizadoRepository.listMovimientoPersonalizado(Long.valueOf(idCard));
     }
 
     public List<ReporteMovimientoPersonalizadoView> listarReporteCard(Integer idCard) {
+        if (!canViewCard(Long.valueOf(idCard))) {
+            return List.of();
+        }
         return movimientoPersonalizadoRepository.listarReporteCard(Long.valueOf(idCard));
     }
 
@@ -116,6 +170,12 @@ public class GastosPersonalizadosService {
     public ApiOutResponseDto nuevoGasto(MovimientoPersonalizado dto) {
         ApiOutResponseDto out = new ApiOutResponseDto();
         Usuario usuario = authService.getUsuarioAutenticado();
+        if (!canEditCard(dto.getIdCard())) {
+            out.setCodResultado(1001);
+            out.setMsgResultado("No tienes permiso para editar esta cuenta");
+            out.setResponse(null);
+            return out;
+        }
 
         CardPersonalizadoEntity cardRef = cardPersonalizadoRepository.getReferenceById(dto.getIdCard());
         CategoriaPersonalizadoEntity catRef = categoriaPersonalizadoRepository
@@ -171,6 +231,9 @@ public class GastosPersonalizadosService {
     public void eliminarMoviento(Long id) {
         Usuario usuario = authService.getUsuarioAutenticado();
         movimientoPersonalizadoRepository.findById(id).ifPresent(mov -> {
+            if (!canEditCard(mov.getCard().getId())) {
+                return;
+            }
             mov.setActivo(false);
             movimientoPersonalizadoRepository.save(mov);
             realtimeNotifier.notifyChange("movimiento_personalizado_eliminado", mov.getCard().getId(), usuario.getId());
@@ -178,12 +241,19 @@ public class GastosPersonalizadosService {
     }
 
     public MovimientoPersonalizadoView obtenerMovimientoPersonalizado(Long idMovimiento) {
+        Optional<MovimientoPersonalizadoEntity> movimientoEntity = movimientoPersonalizadoRepository.findById(idMovimiento);
+        if (movimientoEntity.isEmpty() || !canViewCard(movimientoEntity.get().getCard().getId())) {
+            return null;
+        }
         return movimientoPersonalizadoRepository.obtenerMovimientoPersonalizado(idMovimiento);
     }
 
     public void eliminarCategoria(Long id) {
         Usuario usuario = authService.getUsuarioAutenticado();
         categoriaPersonalizadoRepository.findById(id).ifPresent(cat -> {
+            if (!canEditCard(cat.getCardId())) {
+                return;
+            }
             cat.setActiva(false);
             categoriaPersonalizadoRepository.save(cat);
             realtimeNotifier.notifyChange("categoria_personalizada_eliminada", cat.getCardId(), usuario.getId());
@@ -312,5 +382,32 @@ public class GastosPersonalizadosService {
         out.setMsgResultado("Card archivada correctamente");
         out.setResponse(card.getId());
         return out;
+    }
+
+    private boolean canViewCard(Long idCard) {
+        Usuario usuario = authService.getUsuarioAutenticado();
+        if (cardPersonalizadoRepository.findByIdAndUserId(idCard, usuario.getId()).isPresent()) {
+            return true;
+        }
+
+        return personaRepository.findByUsuarioId(Math.toIntExact(usuario.getId()))
+                .map(persona -> compartirGastoPersonalizadoRepository
+                        .existsByIdPersonaCompartidaAndGastoPersonalizadoIdAndActivoTrue(
+                                persona.getId(),
+                                idCard
+                        ))
+                .orElse(false);
+    }
+
+    private boolean canEditCard(Long idCard) {
+        Usuario usuario = authService.getUsuarioAutenticado();
+        if (cardPersonalizadoRepository.findByIdAndUserId(idCard, usuario.getId()).isPresent()) {
+            return true;
+        }
+
+        return personaRepository.findByUsuarioId(Math.toIntExact(usuario.getId()))
+                .map(persona -> compartirGastoPersonalizadoRepository
+                        .countAccessByPermiso(persona.getId(), idCard, "EDITAR") > 0)
+                .orElse(false);
     }
 }

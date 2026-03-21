@@ -21,6 +21,20 @@ public interface CompartirProyeccionRepository extends JpaRepository<CompartirPr
             Integer idProyeccion
     );
 
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM compartir_proyeccion cp
+            WHERE cp.id_persona_compartida = :idPersonaCompartida
+              AND cp.id_proyeccion = :idProyeccion
+              AND cp.activo = 1
+              AND (cp.permiso IS NULL OR UPPER(cp.permiso) = UPPER(:permiso))
+            """, nativeQuery = true)
+    long countAccessByPermiso(
+            @Param("idPersonaCompartida") Integer idPersonaCompartida,
+            @Param("idProyeccion") Integer idProyeccion,
+            @Param("permiso") String permiso
+    );
+
     boolean existsByIdAndIdPersonaCompartioAndActivoTrue(
             Integer id,
             Integer idPersonaCompartio
@@ -34,6 +48,7 @@ public interface CompartirProyeccionRepository extends JpaRepository<CompartirPr
                 cp.id_persona_compartida AS idPersonaCompartida,
                 u.nombre AS nombrePersonaCompartida,
                 u.email AS correoPersonaCompartida,
+                COALESCE(cp.permiso, 'EDITAR') AS permiso,
                 pm.anio AS anio,
                 pm.mes AS mes,
                 cp.fecha_reg AS fechaCompartido
@@ -61,6 +76,7 @@ public interface CompartirProyeccionRepository extends JpaRepository<CompartirPr
                 cp.id_persona_compartida AS idPersonaCompartida,
                 uido.nombre AS nombrePersonaCompartida,
                 uido.email AS correoPersonaCompartida,
+                COALESCE(cp.permiso, 'EDITAR') AS permiso,
                 pm.anio AS anio,
                 pm.mes AS mes,
                 cp.fecha_reg AS fechaCompartido

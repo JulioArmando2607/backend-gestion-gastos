@@ -9,9 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CompartirProyeccionRequest {
-    private Integer usuarioIdAccion;
-    private String correoDestinatario;
-    private Integer idProyeccion;
-    private String permiso;
+public class RecoveryLookupResponse {
+    private boolean accountFound;
+    private boolean hasRecoveryData;
+    private String preguntaRecuperacion;
+    private String message;
 }

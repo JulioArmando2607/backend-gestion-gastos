@@ -13,4 +13,5 @@ public class CompartirGastoPersonalizadoRequest {
     private Integer usuarioIdAccion;
     private String correoDestinatario;
     private Long idGastoPersonalizado;
+    private String permiso;
 }

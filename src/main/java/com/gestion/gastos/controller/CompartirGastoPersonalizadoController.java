@@ -1,6 +1,7 @@
 package com.gestion.gastos.controller;
 
 import com.gestion.gastos.model.dto.ApiOutResponseDto;
+import com.gestion.gastos.model.dto.ActualizarPermisoCompartidoRequest;
 import com.gestion.gastos.model.dto.CompartirGastoPersonalizadoRequest;
 import com.gestion.gastos.service.CompartirGastoPersonalizadoService;
 import lombok.RequiredArgsConstructor;
@@ -62,5 +63,13 @@ public class CompartirGastoPersonalizadoController {
     @PutMapping("/{id}/desactivar")
     public ResponseEntity<ApiOutResponseDto> desactivar(@PathVariable Integer id) {
         return ResponseEntity.ok(compartirGastoPersonalizadoService.desactivar(id));
+    }
+
+    @PutMapping("/{id}/permiso")
+    public ResponseEntity<ApiOutResponseDto> actualizarPermiso(
+            @PathVariable Integer id,
+            @RequestBody ActualizarPermisoCompartidoRequest request
+    ) {
+        return ResponseEntity.ok(compartirGastoPersonalizadoService.actualizarPermiso(id, request));
     }
 }

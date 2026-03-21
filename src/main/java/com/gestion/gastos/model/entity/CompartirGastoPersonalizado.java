@@ -33,6 +33,10 @@ public class CompartirGastoPersonalizado {
     @Builder.Default
     private Boolean activo = true;
 
+    @Column(name = "permiso", length = 20)
+    @Builder.Default
+    private String permiso = "EDITAR";
+
     @Column(name = "fecha_reg", nullable = false, insertable = false, updatable = false)
     private LocalDateTime fechaReg;
 }

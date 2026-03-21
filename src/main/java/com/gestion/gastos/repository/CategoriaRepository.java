@@ -11,7 +11,7 @@ public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
     List<Categoria> findByUsuarioId(Long usuarioId);
 
     @Query(value = """
-        SELECT * from categorias WHERE tipo = :tipo
+        SELECT * from categorias WHERE tipo = :tipo order by nombre asc
         """,
             nativeQuery = true)
     List<Categoria> findByTipo(@Param("tipo")String tipo);

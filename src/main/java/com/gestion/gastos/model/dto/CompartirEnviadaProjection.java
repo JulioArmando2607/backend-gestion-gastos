@@ -9,6 +9,7 @@ public interface CompartirEnviadaProjection {
     Integer getIdPersonaCompartida();
     String getNombrePersonaCompartida();
     String getCorreoPersonaCompartida();
+    String getPermiso();
     Integer getAnio();
     Integer getMes();
     LocalDateTime getFechaCompartido();

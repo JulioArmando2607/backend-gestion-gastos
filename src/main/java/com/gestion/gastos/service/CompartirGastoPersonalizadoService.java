@@ -1,6 +1,7 @@
 package com.gestion.gastos.service;
 
 import com.gestion.gastos.model.dto.ApiOutResponseDto;
+import com.gestion.gastos.model.dto.ActualizarPermisoCompartidoRequest;
 import com.gestion.gastos.model.dto.CompartirGastoPersonalizadoProjection;
 import com.gestion.gastos.model.dto.CompartirGastoPersonalizadoRequest;
 import com.gestion.gastos.model.dto.proyección.CardPersonalizadoResumen;
@@ -51,6 +52,7 @@ public class CompartirGastoPersonalizadoService {
         if (req.getIdGastoPersonalizado() == null) {
             return build(COD_VALIDACION, "idGastoPersonalizado es obligatorio", null, 0);
         }
+        final String permiso = normalizePermiso(req.getPermiso());
 
         Usuario usuarioAutenticado = authService.getUsuarioAutenticado();
         Optional<Personas> personaAccionOpt =
@@ -99,6 +101,7 @@ public class CompartirGastoPersonalizadoService {
                             .idPersonaCompartio(personaAccion.getId())
                             .idPersonaCompartida(personaDestino.getId())
                             .gastoPersonalizadoId(req.getIdGastoPersonalizado())
+                            .permiso(permiso)
                             .activo(true)
                             .build()
             );
@@ -165,6 +168,43 @@ public class CompartirGastoPersonalizadoService {
         }
     }
 
+    @Transactional
+    public ApiOutResponseDto actualizarPermiso(Integer idCompartir, ActualizarPermisoCompartidoRequest req) {
+        if (idCompartir == null) {
+            return build(COD_VALIDACION, "id es obligatorio", null, 0);
+        }
+        if (req == null) {
+            return build(COD_VALIDACION, "Request es obligatorio", null, 0);
+        }
+
+        Integer usuarioAutenticadoId = Math.toIntExact(authService.getUsuarioAutenticado().getId());
+        Optional<Personas> personaOpt = personaRepository.findByUsuarioId(usuarioAutenticadoId);
+        if (personaOpt.isEmpty()) {
+            return build(COD_NO_ENCONTRADO, "El usuario autenticado no tiene perfil de persona", null, 0);
+        }
+
+        Optional<CompartirGastoPersonalizado> registroOpt = compartirRepository.findById(idCompartir);
+        if (registroOpt.isEmpty()) {
+            return build(COD_NO_ENCONTRADO, "No existe el registro de comparticion", null, 0);
+        }
+
+        CompartirGastoPersonalizado registro = registroOpt.get();
+        if (!Boolean.TRUE.equals(registro.getActivo())) {
+            return build(COD_VALIDACION, "Este acceso ya no está activo", null, 0);
+        }
+        if (!registro.getIdPersonaCompartio().equals(personaOpt.get().getId())) {
+            return build(COD_VALIDACION, "No tienes permiso para cambiar este acceso", null, 0);
+        }
+
+        try {
+            registro.setPermiso(normalizePermiso(req.getPermiso()));
+            compartirRepository.save(registro);
+            return build(COD_OK, "Permiso actualizado correctamente", registro, 1);
+        } catch (Exception e) {
+            return build(COD_ERROR, "Error al actualizar permiso: " + e.getMessage(), null, 0);
+        }
+    }
+
     public ApiOutResponseDto obtenerDetalleCompartido(Long idGastoPersonalizado) {
         if (!tieneAccesoAGasto(idGastoPersonalizado)) {
             return build(COD_VALIDACION, "No tienes permiso para ver este gasto personalizado", null, 0);
@@ -206,6 +246,20 @@ public class CompartirGastoPersonalizadoService {
         out.setResponse(data);
         out.setTotal(BigDecimal.valueOf(total));
         return out;
+    }
+
+    private String normalizePermiso(String permiso) {
+        if (permiso == null || permiso.isBlank()) {
+            return "EDITAR";
+        }
+        String normalized = permiso.trim().toUpperCase();
+        if ("SOLO_VER".equals(normalized) || "VER".equals(normalized)) {
+            return "VER";
+        }
+        if ("PUEDE_EDITAR".equals(normalized) || "EDITAR".equals(normalized)) {
+            return "EDITAR";
+        }
+        throw new IllegalArgumentException("Permiso inválido");
     }
 
     private boolean tieneAccesoAGasto(Long idGastoPersonalizado) {

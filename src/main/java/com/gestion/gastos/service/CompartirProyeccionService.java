@@ -1,6 +1,7 @@
 package com.gestion.gastos.service;
 
 import com.gestion.gastos.model.dto.ApiOutResponseDto;
+import com.gestion.gastos.model.dto.ActualizarPermisoCompartidoRequest;
 import com.gestion.gastos.model.dto.CompartirEnviadaProjection;
 import com.gestion.gastos.model.dto.CompartirProyeccionRequest;
 import com.gestion.gastos.model.dto.DetalleProyeccionView;
@@ -54,6 +55,7 @@ public class CompartirProyeccionService {
         if (req.getIdProyeccion() == null) {
             return build(COD_VALIDACION, "idProyeccion es obligatorio", null, 0);
         }
+        final String permiso = normalizePermiso(req.getPermiso());
 
         Integer usuarioAutenticadoId = obtenerUsuarioAutenticadoId();
         Optional<Personas> personaAccionOpt = personaRepository.findByUsuarioId(usuarioAutenticadoId);
@@ -101,6 +103,7 @@ public class CompartirProyeccionService {
                             .idPersonaCompartio(personaAccion.getId())
                             .idPersonaCompartida(personaDestino.getId())
                             .idProyeccion(req.getIdProyeccion())
+                            .permiso(permiso)
                             .activo(true)
                             .build()
             );
@@ -160,6 +163,42 @@ public class CompartirProyeccionService {
             return build(COD_OK, "Comparticion desactivada exitosamente", registro, 1);
         } catch (Exception e) {
             return build(COD_ERROR, "Error al desactivar comparticion: " + e.getMessage(), null, 0);
+        }
+    }
+
+    @Transactional
+    public ApiOutResponseDto actualizarPermiso(Integer idCompartir, ActualizarPermisoCompartidoRequest req) {
+        if (idCompartir == null) {
+            return build(COD_VALIDACION, "id es obligatorio", null, 0);
+        }
+        if (req == null) {
+            return build(COD_VALIDACION, "Request es obligatorio", null, 0);
+        }
+
+        Optional<Personas> personaOpt = personaRepository.findByUsuarioId(obtenerUsuarioAutenticadoId());
+        if (personaOpt.isEmpty()) {
+            return build(COD_NO_ENCONTRADO, "El usuario autenticado no tiene perfil de persona", null, 0);
+        }
+
+        Optional<CompartirProyeccion> registroOpt = compartirProyeccionRepository.findById(idCompartir);
+        if (registroOpt.isEmpty()) {
+            return build(COD_NO_ENCONTRADO, "No existe el registro de comparticion", null, 0);
+        }
+
+        CompartirProyeccion registro = registroOpt.get();
+        if (!Boolean.TRUE.equals(registro.getActivo())) {
+            return build(COD_VALIDACION, "Este acceso ya no está activo", null, 0);
+        }
+        if (!registro.getIdPersonaCompartio().equals(personaOpt.get().getId())) {
+            return build(COD_VALIDACION, "No tienes permiso para cambiar este acceso", null, 0);
+        }
+
+        try {
+            registro.setPermiso(normalizePermiso(req.getPermiso()));
+            compartirProyeccionRepository.save(registro);
+            return build(COD_OK, "Permiso actualizado correctamente", registro, 1);
+        } catch (Exception e) {
+            return build(COD_ERROR, "Error al actualizar permiso: " + e.getMessage(), null, 0);
         }
     }
 
@@ -248,11 +287,12 @@ public class CompartirProyeccionService {
         if (!esPropietario) {
             Optional<Personas> personaOpt = personaRepository.findByUsuarioId(usuarioAutenticadoId);
             if (personaOpt.isPresent()) {
-                tieneAccesoCompartido = compartirProyeccionRepository
-                        .existsByIdPersonaCompartidaAndIdProyeccionAndActivoTrue(
+                tieneAccesoCompartido =
+                        compartirProyeccionRepository.countAccessByPermiso(
                                 personaOpt.get().getId(),
-                                req.getIdProyeccion()
-                        );
+                                req.getIdProyeccion(),
+                                "EDITAR"
+                        ) > 0;
             }
         }
 
@@ -321,5 +361,19 @@ public class CompartirProyeccionService {
 
     private Integer obtenerUsuarioAutenticadoId() {
         return usuarioAutenticadoService.obtenerUsuarioIdComoInteger();
+    }
+
+    private String normalizePermiso(String permiso) {
+        if (permiso == null || permiso.isBlank()) {
+            return "EDITAR";
+        }
+        String normalized = permiso.trim().toUpperCase();
+        if ("SOLO_VER".equals(normalized) || "VER".equals(normalized)) {
+            return "VER";
+        }
+        if ("PUEDE_EDITAR".equals(normalized) || "EDITAR".equals(normalized)) {
+            return "EDITAR";
+        }
+        throw new IllegalArgumentException("Permiso inválido");
     }
 }
