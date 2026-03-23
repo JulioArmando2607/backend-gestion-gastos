@@ -42,4 +42,11 @@ public class CategoriaController {
         return ResponseEntity.ok(categoriaService.listaCategoriaxTipo(tipo));
     }
 
+    @GetMapping("/tipo/{tipo}/usuario/{usuarioId}")
+    public ResponseEntity<List<Categoria>> listaCategoriaxTipoUsuario(
+            @PathVariable String tipo,
+            @PathVariable Long usuarioId
+    ) {
+        return ResponseEntity.ok(categoriaService.listaCategoriaxTipoUsuario(tipo, usuarioId));
+    }
 }

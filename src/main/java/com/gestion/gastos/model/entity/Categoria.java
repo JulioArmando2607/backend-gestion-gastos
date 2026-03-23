@@ -1,6 +1,5 @@
 package com.gestion.gastos.model.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,16 +16,19 @@ public class Categoria {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nombre; // Ej: Transporte, Sueldo
+    private String nombre;
 
-    private String tipo;   // "GASTO" o "INGRESO"
+    private String tipo;
 
-    private String color;  // Código HEX (opcional)
+    private String color;
 
-    private String icono;  // Nombre del ícono
+    private String icono;
+
+    @Column(name = "es_predeterminada")
+    private String esPredeterminada;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id")
-    @JsonIgnoreProperties({"password", "email", "fechaCreacion", "activo"}) // opcional, para evitar exponer datos
+    @JsonIgnoreProperties({"password", "email", "fechaCreacion", "activo"})
     private Usuario usuario;
 }
