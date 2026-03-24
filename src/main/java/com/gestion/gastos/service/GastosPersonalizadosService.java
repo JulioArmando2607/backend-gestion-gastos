@@ -224,6 +224,7 @@ public class GastosPersonalizadosService {
             entity.setFecha(dto.getFecha());
             entity.setNota(dto.getDescripcion());
             entity.setUpdatedAt(LocalDateTime.now());
+            entity.setUsuarioId(usuario.getId());
 
             movimientoPersonalizadoRepository.save(entity);
             out.setMsgResultado("Actualizado correctamente");
@@ -236,6 +237,7 @@ public class GastosPersonalizadosService {
                     .monto(montoMovimiento)
                     .fecha(dto.getFecha())
                     .nota(dto.getDescripcion())
+                    .usuarioId(usuario.getId())
                     .createdAt(LocalDateTime.now())
                     .activo(true)
                     .build();
