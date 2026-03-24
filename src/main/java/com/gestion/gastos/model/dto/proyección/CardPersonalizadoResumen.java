@@ -6,6 +6,7 @@ public interface  CardPersonalizadoResumen {
     String getColorHex();
     String getDescripcion();
     String getMoneda();
+    java.math.BigDecimal getMonto();
     java.math.BigDecimal getIngresos();
     java.math.BigDecimal getGastos();
     java.math.BigDecimal getSaldo();

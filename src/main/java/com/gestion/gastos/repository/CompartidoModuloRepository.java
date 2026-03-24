@@ -99,10 +99,17 @@ public interface CompartidoModuloRepository extends JpaRepository<CompartidoModu
                 cp.color_hex AS colorHex,
                 COALESCE(SUM(CASE WHEN mp.tipo='INGRESO' THEN mp.monto END), 0) AS ingresos,
                 COALESCE(SUM(CASE WHEN mp.tipo='GASTO' THEN mp.monto END), 0) AS gastos,
-                COALESCE(SUM(CASE
-                    WHEN mp.tipo='INGRESO' THEN mp.monto
-                    WHEN mp.tipo='GASTO' THEN -mp.monto
-                END), 0) AS saldo,
+                CASE
+                    WHEN UPPER(COALESCE(cp.descripcion, '')) = 'TARJ. CRED' THEN
+                        COALESCE(cp.monto, 0) + COALESCE(SUM(CASE
+                            WHEN mp.tipo='INGRESO' THEN mp.monto
+                            WHEN mp.tipo='GASTO' THEN -mp.monto
+                        END), 0)
+                    ELSE COALESCE(SUM(CASE
+                            WHEN mp.tipo='INGRESO' THEN mp.monto
+                            WHEN mp.tipo='GASTO' THEN -mp.monto
+                        END), 0)
+                END AS saldo,
                 u.nombre AS nombreRelacionada,
                 u.email AS correoRelacionada,
                 COALESCE(cm.permiso, 'EDITAR') AS permiso,
@@ -118,7 +125,7 @@ public interface CompartidoModuloRepository extends JpaRepository<CompartidoModu
               AND cm.modulo = :modulo
               AND cm.activo = 1
             GROUP BY cm.id, cm.recurso_id, cp.user_id, cm.id_persona_compartida,
-                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, u.nombre, u.email, cm.permiso, cm.fecha_reg
+                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, cp.monto, u.nombre, u.email, cm.permiso, cm.fecha_reg
             ORDER BY cm.id DESC
             """, nativeQuery = true)
     List<CompartirGastoPersonalizadoProjection> listarGastosPersonalizadosRecibidos(
@@ -138,10 +145,17 @@ public interface CompartidoModuloRepository extends JpaRepository<CompartidoModu
                 cp.color_hex AS colorHex,
                 COALESCE(SUM(CASE WHEN mp.tipo='INGRESO' THEN mp.monto END), 0) AS ingresos,
                 COALESCE(SUM(CASE WHEN mp.tipo='GASTO' THEN mp.monto END), 0) AS gastos,
-                COALESCE(SUM(CASE
-                    WHEN mp.tipo='INGRESO' THEN mp.monto
-                    WHEN mp.tipo='GASTO' THEN -mp.monto
-                END), 0) AS saldo,
+                CASE
+                    WHEN UPPER(COALESCE(cp.descripcion, '')) = 'TARJ. CRED' THEN
+                        COALESCE(cp.monto, 0) + COALESCE(SUM(CASE
+                            WHEN mp.tipo='INGRESO' THEN mp.monto
+                            WHEN mp.tipo='GASTO' THEN -mp.monto
+                        END), 0)
+                    ELSE COALESCE(SUM(CASE
+                            WHEN mp.tipo='INGRESO' THEN mp.monto
+                            WHEN mp.tipo='GASTO' THEN -mp.monto
+                        END), 0)
+                END AS saldo,
                 ud.nombre AS nombreRelacionada,
                 ud.email AS correoRelacionada,
                 COALESCE(cm.permiso, 'EDITAR') AS permiso,
@@ -157,7 +171,7 @@ public interface CompartidoModuloRepository extends JpaRepository<CompartidoModu
               AND cm.modulo = :modulo
               AND cm.activo = 1
             GROUP BY cm.id, cm.recurso_id, cp.user_id, cm.id_persona_compartida,
-                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, ud.nombre, ud.email, cm.permiso, cm.fecha_reg
+                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, cp.monto, ud.nombre, ud.email, cm.permiso, cm.fecha_reg
             ORDER BY cm.id DESC
             """, nativeQuery = true)
     List<CompartirGastoPersonalizadoProjection> listarGastosPersonalizadosEnviados(
@@ -223,3 +237,4 @@ public interface CompartidoModuloRepository extends JpaRepository<CompartidoModu
             @Param("modulo") String modulo
     );
 }
+

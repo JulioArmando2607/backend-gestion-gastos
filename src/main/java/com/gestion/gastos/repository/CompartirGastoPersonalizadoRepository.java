@@ -62,10 +62,17 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
                 cp.color_hex AS colorHex,
                 COALESCE(SUM(CASE WHEN mp.tipo='INGRESO' THEN mp.monto END), 0) AS ingresos,
                 COALESCE(SUM(CASE WHEN mp.tipo='GASTO' THEN mp.monto END), 0) AS gastos,
-                COALESCE(SUM(CASE
-                    WHEN mp.tipo='INGRESO' THEN mp.monto
-                    WHEN mp.tipo='GASTO' THEN -mp.monto
-                END), 0) AS saldo,
+                CASE
+                    WHEN UPPER(COALESCE(cp.descripcion, '')) = 'TARJ. CRED' THEN
+                        COALESCE(cp.monto, 0) + COALESCE(SUM(CASE
+                            WHEN mp.tipo='INGRESO' THEN mp.monto
+                            WHEN mp.tipo='GASTO' THEN -mp.monto
+                        END), 0)
+                    ELSE COALESCE(SUM(CASE
+                            WHEN mp.tipo='INGRESO' THEN mp.monto
+                            WHEN mp.tipo='GASTO' THEN -mp.monto
+                        END), 0)
+                END AS saldo,
                 u.nombre AS nombreRelacionada,
                 u.email AS correoRelacionada,
                 COALESCE(cgp.permiso, 'EDITAR') AS permiso,
@@ -80,7 +87,7 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
             WHERE ud.id = :idUsuario
               AND cgp.activo = 1
             GROUP BY cgp.id, cgp.gasto_personalizado, cp.user_id, cgp.id_persona_compartida,
-                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, u.nombre, u.email, cgp.permiso, cgp.fecha_reg
+                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, cp.monto, u.nombre, u.email, cgp.permiso, cgp.fecha_reg
             ORDER BY cgp.id DESC
             """, nativeQuery = true)
     List<CompartirGastoPersonalizadoProjection> listarRecibidos(@Param("idUsuario") Integer idUsuario);
@@ -97,10 +104,17 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
                 cp.color_hex AS colorHex,
                 COALESCE(SUM(CASE WHEN mp.tipo='INGRESO' THEN mp.monto END), 0) AS ingresos,
                 COALESCE(SUM(CASE WHEN mp.tipo='GASTO' THEN mp.monto END), 0) AS gastos,
-                COALESCE(SUM(CASE
-                    WHEN mp.tipo='INGRESO' THEN mp.monto
-                    WHEN mp.tipo='GASTO' THEN -mp.monto
-                END), 0) AS saldo,
+                CASE
+                    WHEN UPPER(COALESCE(cp.descripcion, '')) = 'TARJ. CRED' THEN
+                        COALESCE(cp.monto, 0) + COALESCE(SUM(CASE
+                            WHEN mp.tipo='INGRESO' THEN mp.monto
+                            WHEN mp.tipo='GASTO' THEN -mp.monto
+                        END), 0)
+                    ELSE COALESCE(SUM(CASE
+                            WHEN mp.tipo='INGRESO' THEN mp.monto
+                            WHEN mp.tipo='GASTO' THEN -mp.monto
+                        END), 0)
+                END AS saldo,
                 ud.nombre AS nombreRelacionada,
                 ud.email AS correoRelacionada,
                 COALESCE(cgp.permiso, 'EDITAR') AS permiso,
@@ -115,8 +129,9 @@ public interface CompartirGastoPersonalizadoRepository extends JpaRepository<Com
             WHERE u.id = :idUsuario
               AND cgp.activo = 1
             GROUP BY cgp.id, cgp.gasto_personalizado, cp.user_id, cgp.id_persona_compartida,
-                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, ud.nombre, ud.email, cgp.permiso, cgp.fecha_reg
+                cp.nombre, cp.descripcion, cp.moneda, cp.color_hex, cp.monto, ud.nombre, ud.email, cgp.permiso, cgp.fecha_reg
             ORDER BY cgp.id DESC
             """, nativeQuery = true)
     List<CompartirGastoPersonalizadoProjection> listarEnviados(@Param("idUsuario") Integer idUsuario);
 }
+

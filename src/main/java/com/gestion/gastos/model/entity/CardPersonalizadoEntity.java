@@ -3,6 +3,7 @@ package com.gestion.gastos.model.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -38,6 +39,8 @@ public class CardPersonalizadoEntity {
 
     @Column(length = 40)
     private String icono;
+
+    private BigDecimal monto;
 
     @Column(nullable = false)
     private Boolean archivado = false;

@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 // response
@@ -20,6 +21,7 @@ public class CardPersonalizadoResponse {
     private String moneda;
     private String colorHex;
     private String icono;
+    private BigDecimal monto;
     private boolean archivado;
     private LocalDateTime createdAt;
 }

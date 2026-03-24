@@ -21,13 +21,14 @@ import com.gestion.gastos.repository.MovimientoPersonalizadoRepository;
 import com.gestion.gastos.repository.PersonaRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GastosPersonalizadosService {
@@ -45,10 +46,12 @@ public class GastosPersonalizadosService {
     }
 
     public CardPersonalizadoResponse crearGastoPersonalizado(CrearCardPersonalizadoRequest req) {
+        log.info("crearGastoPersonalizado req nombre={}, descripcion={}, moneda={}, colorHex={}, monto={}",
+                req.getNombre(), req.getDescripcion(), req.getMoneda(), req.getColorHex(), req.getMonto());
         String nombre = req.getNombre().trim();
         Usuario usuario = authService.getUsuarioAutenticado();
 
-        if (cardPersonalizadoRepository.existsByUserIdAndNombreIgnoreCase(usuario.getId(), nombre)) {
+        if (cardPersonalizadoRepository.existsByUserIdAndNombreIgnoreCaseAndArchivadoFalse(usuario.getId(), nombre)) {
             throw new IllegalArgumentException("Ya existe un card con ese nombre para el usuario.");
         }
 
@@ -58,6 +61,7 @@ public class GastosPersonalizadosService {
                 .descripcion(req.getDescripcion())
                 .moneda(Optional.ofNullable(req.getMoneda()).orElse("PEN").toUpperCase())
                 .colorHex(Optional.ofNullable(req.getColorHex()).orElse("#6C63FF"))
+                .monto(Optional.ofNullable(req.getMonto()).orElse(BigDecimal.ZERO))
                 .archivado(false)
                 .build();
 
@@ -71,6 +75,7 @@ public class GastosPersonalizadosService {
                 .moneda(saved.getMoneda())
                 .colorHex(saved.getColorHex())
                 .icono(saved.getIcono())
+                .monto(saved.getMonto())
                 .archivado(Boolean.TRUE.equals(saved.getArchivado()))
                 .createdAt(saved.getCreatedAt())
                 .build();
@@ -176,6 +181,29 @@ public class GastosPersonalizadosService {
         }
 
         CardPersonalizadoEntity cardRef = cardPersonalizadoRepository.getReferenceById(dto.getIdCard());
+        BigDecimal montoMovimiento = dto.getMonto() instanceof BigDecimal
+                ? (BigDecimal) dto.getMonto()
+                : new BigDecimal(dto.getMonto().toString());
+
+        if ("TARJ. CRED".equalsIgnoreCase(Optional.ofNullable(cardRef.getDescripcion()).orElse(""))
+                && "GASTO".equalsIgnoreCase(dto.getTipo())) {
+            BigDecimal disponible = Optional.ofNullable(
+                    cardPersonalizadoRepository.CardPersonalizadosxIdSinValidacion(dto.getIdCard())
+            ).map(CardPersonalizadoResumen::getSaldo).orElse(BigDecimal.ZERO);
+
+            if (dto.getIdMovimiento() != null && dto.getIdMovimiento() > 0) {
+                MovimientoPersonalizadoEntity actual = movimientoPersonalizadoRepository.findById(dto.getIdMovimiento())
+                        .orElseThrow(() -> new IllegalArgumentException("Movimiento no encontrado"));
+                if (actual.getTipo() == CategoriaPersonalizadoEntity.TipoMovimiento.GASTO) {
+                    disponible = disponible.add(actual.getMonto());
+                }
+            }
+
+            if (montoMovimiento.compareTo(disponible) > 0) {
+                throw new IllegalArgumentException("No puedes gastar mas de tu credito disponible");
+            }
+        }
+
         CategoriaPersonalizadoEntity catRef = categoriaPersonalizadoRepository
                 .findByIdAndCardId(dto.getCategoria(), dto.getIdCard())
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -192,9 +220,7 @@ public class GastosPersonalizadosService {
 
             entity.setCategoria(catRef);
             entity.setTipo(tipoEnum);
-            entity.setMonto(dto.getMonto() instanceof BigDecimal
-                    ? (BigDecimal) dto.getMonto()
-                    : new BigDecimal(dto.getMonto().toString()));
+            entity.setMonto(montoMovimiento);
             entity.setFecha(dto.getFecha());
             entity.setNota(dto.getDescripcion());
             entity.setUpdatedAt(LocalDateTime.now());
@@ -207,9 +233,7 @@ public class GastosPersonalizadosService {
                     .card(cardRef)
                     .categoria(catRef)
                     .tipo(tipoEnum)
-                    .monto(dto.getMonto() instanceof BigDecimal
-                            ? (BigDecimal) dto.getMonto()
-                            : new BigDecimal(dto.getMonto().toString()))
+                    .monto(montoMovimiento)
                     .fecha(dto.getFecha())
                     .nota(dto.getDescripcion())
                     .createdAt(LocalDateTime.now())
@@ -260,6 +284,13 @@ public class GastosPersonalizadosService {
 
     @Transactional
     public ApiOutResponseDto editarCard(Long idCard, EditarCardPersonalizadoRequest req) {
+        log.info("editarCard idCard={}, req nombre={}, descripcion={}, moneda={}, colorHex={}, monto={}",
+                idCard,
+                req != null ? req.getNombre() : null,
+                req != null ? req.getDescripcion() : null,
+                req != null ? req.getMoneda() : null,
+                req != null ? req.getColorHex() : null,
+                req != null ? req.getMonto() : null);
         ApiOutResponseDto out = new ApiOutResponseDto();
 
         if (idCard == null || idCard <= 0) {
@@ -321,6 +352,9 @@ public class GastosPersonalizadosService {
         if (req.getColorHex() != null && !req.getColorHex().isBlank()) {
             card.setColorHex(req.getColorHex());
         }
+        if (req.getMonto() != null) {
+            card.setMonto(req.getMonto());
+        }
 
         CardPersonalizadoEntity saved = cardPersonalizadoRepository.save(card);
         realtimeNotifier.notifyChange("gasto_personalizado_editado", saved.getId(), usuario.getId());
@@ -332,6 +366,7 @@ public class GastosPersonalizadosService {
                 .moneda(saved.getMoneda())
                 .colorHex(saved.getColorHex())
                 .icono(saved.getIcono())
+                .monto(saved.getMonto())
                 .archivado(Boolean.TRUE.equals(saved.getArchivado()))
                 .createdAt(saved.getCreatedAt())
                 .build();
@@ -409,3 +444,11 @@ public class GastosPersonalizadosService {
                 .orElse(false);
     }
 }
+
+
+
+
+
+
+
+
