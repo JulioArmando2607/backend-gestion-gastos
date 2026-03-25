@@ -199,9 +199,9 @@ public class GastosPersonalizadosService {
                 }
             }
 
-            if (montoMovimiento.compareTo(disponible) > 0) {
+            /*if (montoMovimiento.compareTo(disponible) > 0) {
                 throw new IllegalArgumentException("No puedes gastar mas de tu credito disponible");
-            }
+            }*/
         }
 
         CategoriaPersonalizadoEntity catRef = categoriaPersonalizadoRepository
